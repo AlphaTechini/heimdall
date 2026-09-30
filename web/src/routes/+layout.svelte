@@ -47,7 +47,7 @@
 <Header />
 
 <main id="main" class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-	{#if app.status === 'ready'}
+	{#if app.status === 'ready' && !wallet.restoring}
 		{@render children()}
 	{:else if app.status === 'error'}
 		<ErrorState title="Heimdall cannot be reached" message={app.error} onretry={() => app.load()} />

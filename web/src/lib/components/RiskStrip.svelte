@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { app } from '$lib/app.svelte';
 	import { clock } from '$lib/clock.svelte';
-	import { formatNumber, timeAgo } from '$lib/format';
+	import { formatReading, timeAgo } from '$lib/format';
 	import { live } from '$lib/live.svelte';
 	import type { SignalLevel } from '$lib/types';
 
@@ -62,7 +62,7 @@
 							<span class="block text-sm font-medium">{info.label}</span>
 							<span class="block text-sm text-granite-dark tabular">
 								{#if reading && level !== 'unavailable'}
-									{formatNumber(reading.value)} {reading.unit}
+									{formatReading(reading.value)} {reading.unit}
 								{:else}
 									No reading
 								{/if}

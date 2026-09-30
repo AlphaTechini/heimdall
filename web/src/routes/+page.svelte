@@ -132,7 +132,7 @@
 		</div>
 	</div>
 
-	<aside aria-labelledby="rail-title" class="min-w-0 lg:border-l lg:border-line lg:pl-8">
+	<aside aria-labelledby="rail-title" class="min-w-0 lg:pl-4">
 		<h2 id="rail-title" class="text-xl display">Activity</h2>
 		<div class="mt-3">
 			<EventFeedPanel

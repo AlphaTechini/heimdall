@@ -16,7 +16,7 @@
 			<p class="min-w-0 flex-1">{toast.message}</p>
 			<button
 				type="button"
-				class="-mr-1 rounded p-1 text-white/80 hover:text-white"
+				class="-mr-1 rounded p-1 text-white/80 hover:text-white focus-visible:outline-white"
 				aria-label="Dismiss message"
 				onclick={() => toasts.dismiss(toast.id)}
 			>

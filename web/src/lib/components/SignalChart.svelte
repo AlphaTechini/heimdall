@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatClock, formatNumber } from '$lib/format';
+	import { formatClock, formatReading } from '$lib/format';
 	import type { HistoryPoint, SignalLevel } from '$lib/types';
 
 	let {
@@ -39,7 +39,10 @@
 					? { v: s.value, level: s.level, time: p.time, block: p.block, t: Date.parse(p.time) }
 					: null;
 			})
-			.filter((s): s is NonNullable<typeof s> => s !== null && Number.isFinite(s.v))
+			.filter(
+				(s): s is NonNullable<typeof s> =>
+					s !== null && s.level !== 'unavailable' && Number.isFinite(s.v)
+			)
 	);
 
 	const scale = $derived.by(() => {
@@ -110,9 +113,9 @@
 		<span class="font-semibold" title={tooltip}>{label}</span>
 		<span class="text-sm text-granite-dark tabular">
 			{#if hovered}
-				{formatNumber(hovered.v)} {unit}, {formatClock(hovered.time)}, {LEVEL_TEXT[hovered.level]}
+				{formatReading(hovered.v)} {unit}, {formatClock(hovered.time)}, {LEVEL_TEXT[hovered.level]}
 			{:else if latest}
-				Latest {formatNumber(latest.v)} {unit}
+				Latest {formatReading(latest.v)} {unit}
 			{:else}
 				No readings yet
 			{/if}
@@ -124,11 +127,11 @@
 			class="mt-1 block w-full touch-pan-y"
 			role="img"
 			aria-label="{label} over time. Latest {latest
-				? formatNumber(latest.v)
+				? formatReading(latest.v)
 				: ''} {unit}.{threshold?.warning !== undefined
-				? ` Warning at ${formatNumber(threshold.warning)}.`
+				? ` Warning at ${formatReading(threshold.warning)}.`
 				: ''}{threshold?.critical !== undefined
-				? ` Critical at ${formatNumber(threshold.critical)}.`
+				? ` Critical at ${formatReading(threshold.critical)}.`
 				: ''}"
 			onpointermove={onMove}
 			onpointerleave={() => (hoverIndex = null)}
@@ -152,7 +155,7 @@
 					stroke-dasharray="4 3"
 				/>
 				<text x={PAD.l} y={yOf(threshold.warning) - 3} font-size="10" fill="#1b2a33">
-					Warning at {formatNumber(threshold.warning)}
+					Warning at {formatReading(threshold.warning)}
 				</text>
 			{/if}
 			{#if threshold?.critical !== undefined}
@@ -166,7 +169,7 @@
 					stroke-dasharray="4 3"
 				/>
 				<text x={PAD.l} y={yOf(threshold.critical) - 3} font-size="10" fill="#1b2a33">
-					Critical at {formatNumber(threshold.critical)}
+					Critical at {formatReading(threshold.critical)}
 				</text>
 			{/if}
 			{#if samples.length > 1}
@@ -215,6 +218,8 @@
 			</text>
 		</svg>
 	{:else}
-		<p class="mt-2 text-sm text-granite-dark">Nothing recorded for this signal yet.</p>
+		<p class="mt-2 text-sm text-granite-dark">
+			No readings for this signal. It has no data source for this vault yet.
+		</p>
 	{/if}
 </figure>

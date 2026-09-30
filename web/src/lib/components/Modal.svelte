@@ -25,6 +25,12 @@
 		if (dialog && !dialog.open) dialog.showModal();
 	});
 
+	// Give focus back to whatever opened the dialog once it closes.
+	$effect(() => {
+		const opener = document.activeElement as HTMLElement | null;
+		return () => opener?.focus?.();
+	});
+
 	function onCancel(e: Event) {
 		e.preventDefault();
 		if (!locked) onclose();
