@@ -44,6 +44,7 @@ type Point struct {
 	Block        uint64            `json:"block"`
 	Time         time.Time         `json:"time"`
 	TotalAssets  string            `json:"totalAssets"`
+	Balances     map[string]string `json:"balances"`
 	SharePrice   string            `json:"sharePrice"`
 	OutflowPct   float64           `json:"outflowPct"`
 	ShareDropPct float64           `json:"shareDropPct"`
@@ -73,6 +74,8 @@ type Result struct {
 	FirstWarningBlock                 *uint64                       `json:"firstWarningBlock"`
 	FirstCriticalBlock                *uint64                       `json:"firstCriticalBlock"`
 	PeakTotalAssets                   string                        `json:"peakTotalAssets"`
+	PeakBalances                      map[string]string             `json:"peakBalances"`
+	TokenDecimals                     map[string]int                `json:"tokenDecimals"`
 	TotalAssetsAtFirstCritical        *string                       `json:"totalAssetsAtFirstCritical"`
 	PctOfPeakRemainingAtFirstCritical *float64                      `json:"pctOfPeakRemainingAtFirstCritical"`
 }
@@ -113,7 +116,8 @@ func Run(ctx context.Context, p Params, sig *config.Signals) (*Result, error) {
 	}
 	defer ch.Eth.Close()
 	at := new(big.Int).SetUint64(p.From)
-	var read func(bn *big.Int) (*big.Int, *big.Int, error) // returns totalAssets (or summed balance) and the share price (nil when unavailable)
+	var read func(bn *big.Int) ([]*big.Int, *big.Int, error) // per-token balances (erc4626: [totalAssets]) and the share price (nil when unavailable)
+	var tokDec []int
 	var asset common.Address
 	var dec int
 	var target common.Address
@@ -138,7 +142,8 @@ func Run(ctx context.Context, p Params, sig *config.Signals) (*Result, error) {
 		}
 		one := chain.Pow10(int(vdec.Int64()))
 		tokens = []string{asset.Hex()}
-		read = func(bn *big.Int) (*big.Int, *big.Int, error) {
+		tokDec = []int{dec}
+		read = func(bn *big.Int) ([]*big.Int, *big.Int, error) {
 			ta, err := retry(func() (*big.Int, error) { return ch.Uint(ctx, &chain.ERC4626ABI, vault, bn, "totalAssets") })
 			if err != nil {
 				return nil, nil, fmt.Errorf("cannot read totalAssets: %w", err)
@@ -147,7 +152,7 @@ func Run(ctx context.Context, p Params, sig *config.Signals) (*Result, error) {
 			if err != nil {
 				return nil, nil, fmt.Errorf("cannot read the share price: %w", err)
 			}
-			return ta, sp, nil
+			return []*big.Int{ta}, sp, nil
 		}
 		note = "Signals S1 (outflow) and S2 (share price) replayed with the production signal code over real historical state. S3-S6 need feeds and logs that this replay does not read."
 	case "balance":
@@ -166,45 +171,80 @@ func Run(ctx context.Context, p Params, sig *config.Signals) (*Result, error) {
 			tokens = append(tokens, t.Hex())
 		}
 		dec = decs[0]
-		read = func(bn *big.Int) (*big.Int, *big.Int, error) {
-			sum := new(big.Int)
+		tokDec = decs
+		read = func(bn *big.Int) ([]*big.Int, *big.Int, error) {
+			out := make([]*big.Int, len(p.Tokens))
 			for i, t := range p.Tokens {
 				t := t
 				v, err := retry(func() (*big.Int, error) { return ch.BalanceOf(ctx, t, p.Holder, bn) })
 				if err != nil {
 					return nil, nil, fmt.Errorf("cannot read balanceOf(%s) for token %s: %w", p.Holder.Hex(), t.Hex(), err)
 				}
-				// bring every token to the first token's decimals before summing
-				if decs[i] > dec {
-					v = new(big.Int).Div(v, chain.Pow10(decs[i]-dec))
-				} else if decs[i] < dec {
-					v = new(big.Int).Mul(v, chain.Pow10(dec-decs[i]))
-				}
-				sum.Add(sum, v)
+				out[i] = v
 			}
-			return sum, nil, nil
+			return out, nil, nil
 		}
-		unit := "in token units of the first listed token (no prices are applied; different tokens are added 1:1)"
-		if p.Stable {
-			unit = "treating every listed token as $1"
+		switch {
+		case p.Stable:
+			note = "Balance mode with --stable: S1 (outflow) is computed from the summed balanceOf(holder) of the listed tokens, counting every token as $1 (tokens with different decimals are scaled to the first token's), with the production signal code."
+		case len(p.Tokens) == 1:
+			note = "Balance mode: S1 (outflow) is computed from balanceOf(holder) of the token in token units; no price is applied, so the USD floor is not applied."
+		default:
+			note = "Balance mode without --stable: S1 (outflow) is computed per token (each token's own % drop over the window) and the largest per-token outflow is used. No prices are applied, so tokens are never added together and the USD floor is not applied."
 		}
-		note = "Balance mode: S1 (outflow) is computed from the summed balanceOf(holder) of the listed tokens " + unit + ", with the production signal code. S2 (share price) is unavailable in this mode. S3-S6 are not replayed."
+		note += " S2 (share price) is unavailable in this mode. S3-S6 are not replayed."
 	}
 	if p.Source != "" {
 		note += " Source: " + p.Source
 	}
-	eng := signals.NewEngine(sig, signals.Meta{AssetDecimals: dec, AssetIsStable: p.Stable})
+	// Tokens are only added together when they can be priced: every token counts as $1 (--stable)
+	// or there is just one. Otherwise each token gets its own engine and the worst one is reported.
+	perToken := len(tokDec) > 1 && !p.Stable
+	nEng := 1
+	if perToken {
+		nEng = len(tokDec)
+	}
+	engs := make([]*signals.Engine, nEng)
+	for i := range engs {
+		d := dec
+		if perToken {
+			d = tokDec[i]
+		}
+		engs[i] = signals.NewEngine(sig, signals.Meta{AssetDecimals: d, AssetIsStable: p.Stable})
+	}
 	res := &Result{ID: p.Incident, Title: p.Title, Incident: p.Incident, ChainID: ch.ChainID.Uint64(), Mode: p.Mode, Tokens: tokens, Target: target.Hex(), Asset: asset.Hex(),
-		AssetDecimals: dec, FromBlock: p.From, ToBlock: p.To, Step: p.Step, GeneratedAt: time.Now().UTC(),
+		AssetDecimals: dec, TokenDecimals: map[string]int{}, PeakBalances: map[string]string{}, FromBlock: p.From, ToBlock: p.To, Step: p.Step, GeneratedAt: time.Now().UTC(),
 		Thresholds: signals.Thresholds(sig), Points: []Point{}, Note: note}
+	for i, t := range tokens {
+		res.TokenDecimals[t] = tokDec[i]
+	}
 	if u, err := url.Parse(p.RPC); err == nil {
 		res.RPCHost = u.Host
 	}
 	if res.Title == "" {
 		res.Title = p.Incident
 	}
-	peak := new(big.Int)
-	var atCrit *big.Int
+	// scaleSum adds balances after bringing them to the first token's decimals.
+	scaleSum := func(bal []*big.Int) *big.Int {
+		sum := new(big.Int)
+		for i, v := range bal {
+			switch {
+			case tokDec[i] > dec:
+				v = new(big.Int).Div(v, chain.Pow10(tokDec[i]-dec))
+			case tokDec[i] < dec:
+				v = new(big.Int).Mul(v, chain.Pow10(dec-tokDec[i]))
+			}
+			sum.Add(sum, v)
+		}
+		return sum
+	}
+	peaks := make([]*big.Int, len(tokDec))
+	for i := range peaks {
+		peaks[i] = new(big.Int)
+	}
+	peakSum := new(big.Int)
+	var atCrit []*big.Int
+	var sumAtCrit *big.Int
 	for b := p.From; b <= p.To; b += p.Step {
 		bn := new(big.Int).SetUint64(b)
 		hdr, err := retry(func() (*struct{ t uint64 }, error) {
@@ -217,16 +257,37 @@ func Run(ctx context.Context, p Params, sig *config.Signals) (*Result, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot read block %d: %w", b, err)
 		}
-		ta, sp, err := read(bn)
+		bal, sp, err := read(bn)
 		if err != nil {
 			return nil, fmt.Errorf("block %d: %w", b, err)
 		}
-		r := eng.Step(signals.Obs{Block: b, Time: time.Unix(int64(hdr.t), 0).UTC(), TotalAssets: ta, SharePrice: sp})
-		if ta.Cmp(peak) > 0 {
-			peak = new(big.Int).Set(ta)
+		t := time.Unix(int64(hdr.t), 0).UTC()
+		var r signals.Result
+		sum := scaleSum(bal)
+		if perToken {
+			for i, e := range engs {
+				ri := e.Step(signals.Obs{Block: b, Time: t, TotalAssets: bal[i]})
+				if i == 0 || worse(ri, r) {
+					r = ri
+				}
+			}
+		} else {
+			r = engs[0].Step(signals.Obs{Block: b, Time: t, TotalAssets: sum, SharePrice: sp})
 		}
-		pt := Point{Block: b, Time: time.Unix(int64(hdr.t), 0).UTC(), TotalAssets: ta.String(), SharePrice: spStr(sp),
+		pt := Point{Block: b, Time: t, Balances: map[string]string{}, SharePrice: spStr(sp),
 			OutflowPct: r.Signals[0].Value, ShareDropPct: r.Signals[1].Value, Severity: r.Severity, Levels: map[string]string{}}
+		if !perToken {
+			pt.TotalAssets = sum.String()
+		}
+		for i, v := range bal {
+			pt.Balances[tokens[i]] = v.String()
+			if v.Cmp(peaks[i]) > 0 {
+				peaks[i] = new(big.Int).Set(v)
+			}
+		}
+		if sum.Cmp(peakSum) > 0 {
+			peakSum = new(big.Int).Set(sum)
+		}
 		for _, s := range r.Signals {
 			pt.Levels[s.ID] = s.Level
 		}
@@ -237,21 +298,59 @@ func Run(ctx context.Context, p Params, sig *config.Signals) (*Result, error) {
 		}
 		if r.Severity == signals.SevCritical && res.FirstCriticalBlock == nil {
 			res.FirstCriticalBlock = &bb
-			atCrit = new(big.Int).Set(ta)
+			atCrit = bal
+			sumAtCrit = sum
 		}
 		if (b-p.From)/p.Step%200 == 0 {
 			slog.Info("replaying", "block", b, "of", p.To)
 		}
 	}
-	res.PeakTotalAssets = peak.String()
-	if atCrit != nil && peak.Sign() > 0 {
-		s := atCrit.String()
-		res.TotalAssetsAtFirstCritical = &s
-		f, _ := new(big.Float).Quo(new(big.Float).SetInt(atCrit), new(big.Float).SetInt(peak)).Float64()
-		f *= 100
-		res.PctOfPeakRemainingAtFirstCritical = &f
+	for i, t := range tokens {
+		res.PeakBalances[t] = peaks[i].String()
+	}
+	if !perToken {
+		res.PeakTotalAssets = peakSum.String()
+		if sumAtCrit != nil && peakSum.Sign() > 0 {
+			s := sumAtCrit.String()
+			res.TotalAssetsAtFirstCritical = &s
+			f, _ := new(big.Float).Quo(new(big.Float).SetInt(sumAtCrit), new(big.Float).SetInt(peakSum)).Float64()
+			f *= 100
+			res.PctOfPeakRemainingAtFirstCritical = &f
+		}
+	} else if atCrit != nil {
+		// the token that drained the most (lowest share of its own peak left)
+		var low *float64
+		for i, v := range atCrit {
+			if peaks[i].Sign() == 0 {
+				continue
+			}
+			f, _ := new(big.Float).Quo(new(big.Float).SetInt(v), new(big.Float).SetInt(peaks[i])).Float64()
+			f *= 100
+			if low == nil || f < *low {
+				low = &f
+			}
+		}
+		res.PctOfPeakRemainingAtFirstCritical = low
 	}
 	return res, nil
+}
+
+func sevRank(s string) int {
+	switch s {
+	case signals.SevCritical:
+		return 2
+	case signals.SevWarning:
+		return 1
+	}
+	return 0
+}
+
+// worse reports whether a is a worse result than b (higher severity, then larger outflow).
+func worse(a, b signals.Result) bool {
+	if sevRank(a.Severity) != sevRank(b.Severity) {
+		return sevRank(a.Severity) > sevRank(b.Severity)
+	}
+	return a.Signals[0].Value > b.Signals[0].Value
 }
 
 // Write saves the result (creating the directory).
