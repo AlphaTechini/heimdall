@@ -1,0 +1,12 @@
+{
+  "s1": { "warnPct": 5, "critPct": 15, "windowSec": 60, "critLongPct": 25, "longWindowSec": 600, "usdFloor": 1000 },
+  "s2": { "critDropPct": 0.1 },
+  "s3": { "warnPct": 2, "critPct": 5 },
+  "s4": { "warnBelow": 0.985, "critBelow": 0.95 },
+  "s5": { "warnLiquidityMultiple": 2, "warnUtilizationPct": 95 },
+  "s6": { "critComboWindowSec": 600 },
+  "debounceChecks": 2,
+  "twoWarningsWindowSec": 300,
+  "tip": { "criticalBudgetPct": 100, "warningBudgetPct": 50 },
+  "exitRetryTimeoutSec": 1800
+}
