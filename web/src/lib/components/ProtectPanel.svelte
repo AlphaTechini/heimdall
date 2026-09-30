@@ -39,6 +39,8 @@
 
 	let policy = $state<Policy>(defaultPolicy(app.config?.defaultTipCapUsd ?? 2));
 	let valid = $state(true);
+	// Once the user changes anything, a late-arriving saved default must not overwrite their choices.
+	let touched = false;
 	let running = $state(false);
 	let guardAddress = $state<`0x${string}` | null>(positions.guard);
 
@@ -78,7 +80,9 @@
 		if (auth.token) {
 			api
 				.settings(auth.token)
-				.then((s) => (policy = { ...s.defaultPolicy }))
+				.then((s) => {
+					if (!touched) policy = { ...s.defaultPolicy };
+				})
 				.catch(() => {});
 		}
 	});
@@ -192,7 +196,9 @@
 	</p>
 
 	<div class="mt-6">
-		<PolicyForm bind:policy bind:valid safeAddress={wallet.address} disabled={running} />
+		<div oninput={() => (touched = true)} onchange={() => (touched = true)} role="presentation">
+			<PolicyForm bind:policy bind:valid safeAddress={wallet.address} disabled={running} />
+		</div>
 	</div>
 
 	<h3 class="mt-8 text-xl display">Setup steps</h3>

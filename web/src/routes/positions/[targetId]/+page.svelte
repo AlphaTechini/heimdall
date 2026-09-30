@@ -53,6 +53,7 @@
 
 	$effect(() => {
 		const id = targetId;
+		if (!app.target(id)) return; // unknown position: nothing to load
 		const controller = new AbortController();
 		void loadHistory(id, controller.signal);
 		untrack(() => void live.loadSnapshot(id));
@@ -81,21 +82,16 @@
 	let exitsStatus = $state<'loading' | 'ready' | 'error'>('loading');
 	let exitsError = $state('');
 
-	async function loadExits(id: string, address: string | null) {
-		if (!address) {
+	async function loadExits(id: string, guard: string | null) {
+		if (!guard) {
 			exits = [];
 			exitsStatus = 'ready';
 			return;
 		}
-		exitsStatus = 'loading';
+		if (exits.length === 0) exitsStatus = 'loading';
 		try {
-			const res = await api.activity({ address, targetId: id, limit: 100 });
-			const wanted = res.events.flatMap((e) => (e.exitId === null ? [] : [e.exitId]));
-			const last = positions.position(id)?.lastExit;
-			if (last) wanted.push(last.id);
-			const ids = wanted.filter((n, i) => wanted.indexOf(n) === i);
-			const loaded = await Promise.all(ids.map((n) => api.exit(n)));
-			exits = loaded.sort((a, b) => b.id - a.id);
+			const res = await api.exits({ guard, targetId: id, limit: 50 });
+			exits = res.exits.sort((a, b) => b.id - a.id);
 			exitsStatus = 'ready';
 		} catch (e) {
 			exitsError = describeError(e, 'Could not load exit receipts.').message;
@@ -105,8 +101,11 @@
 
 	$effect(() => {
 		const id = targetId;
-		const address = wallet.address;
-		untrack(() => void loadExits(id, address));
+		const guard = positions.guard;
+		// Reload when the position's outcome changes (an exit finished, the owner exited by hand).
+		void [position?.status, position?.returnedAmount];
+		if (!app.target(id)) return;
+		untrack(() => void loadExits(id, guard));
 	});
 
 	function upsertExit(x: Exit) {
@@ -126,7 +125,7 @@
 			}),
 			live.onReconnect(() => {
 				void loadHistory(targetId);
-				void loadExits(targetId, wallet.address);
+				void loadExits(targetId, positions.guard);
 			})
 		];
 		return () => stops.forEach((s) => s());
@@ -210,7 +209,9 @@
 	<div class="mt-5 max-w-3xl overflow-hidden rounded-lg border border-line bg-white">
 		{#if band}
 			<HornBand word={band.word} tone={band.tone}>
-				<p class="font-medium">{STATUS_LABEL[position.status]}</p>
+				{#if STATUS_LABEL[position.status] !== band.word}
+					<p class="font-medium">{STATUS_LABEL[position.status]}</p>
+				{/if}
 				{#if snapshot && snapshot.severity !== 'watch' && position.status !== 'exited'}
 					<p class="mt-0.5">{snapshot.reason}</p>
 				{/if}
@@ -305,7 +306,7 @@
 				{#if wallet.issue}
 					<div class="mt-3"><WalletNotice /></div>
 				{/if}
-				<div class="mt-4 flex flex-wrap gap-3">
+				<div class="mt-4 flex flex-wrap gap-3 max-sm:[&>*]:w-full max-sm:[&>a]:text-center">
 					<button
 						type="button"
 						class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
@@ -414,7 +415,7 @@
 				<ErrorState
 					title="Exit receipts did not load"
 					message={exitsError}
-					onretry={() => loadExits(targetId, wallet.address)}
+					onretry={() => loadExits(targetId, positions.guard)}
 				/>
 			{:else if exits.length === 0}
 				<p class="text-granite-dark">
@@ -446,7 +447,7 @@
 					<WalletNotice class="mb-3" />
 				{/if}
 				<ActionStatus action={save} class="mb-3" />
-				<div class="flex flex-wrap gap-3">
+				<div class="flex flex-wrap gap-3 max-sm:[&>*]:w-full max-sm:[&>a]:text-center">
 					<button
 						type="button"
 						class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"

@@ -48,9 +48,8 @@ class WalletStore {
 	connected = $derived(this.address !== null);
 
 	expectedChainId = $derived(app.config?.chainId ?? null);
-	expectedChainName = $derived(
-		app.config ? chainSpec(app.config.chainId, app.config.chainName).name : ''
-	);
+	// The name the server shows in the header, so the message and the header agree.
+	expectedChainName = $derived(app.config?.chainName ?? '');
 	wrongNetwork = $derived(
 		this.connected && this.expectedChainId !== null && this.chainId !== this.expectedChainId
 	);

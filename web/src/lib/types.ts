@@ -236,3 +236,51 @@ export interface VerifyResponse {
 	address: `0x${string}`;
 	expiresAt: string;
 }
+
+export interface BacktestSummary {
+	id: string;
+	title: string;
+	incident: string;
+	fromBlock: number;
+	toBlock: number;
+	generatedAt: string;
+}
+
+export interface BacktestPoint {
+	block: number;
+	time: string;
+	totalAssets: string;
+	balances: Record<string, string>;
+	sharePrice: string;
+	outflowPct: number;
+	shareDropPct: number;
+	severity: Severity;
+	levels: Record<string, SignalLevel>;
+}
+
+export interface Backtest {
+	id: string;
+	title: string;
+	incident: string;
+	chainId: number;
+	mode: 'erc4626' | 'balance';
+	tokens: string[];
+	tokenDecimals: Record<string, number>;
+	target: string;
+	asset: string;
+	assetDecimals: number;
+	fromBlock: number;
+	toBlock: number;
+	step: number;
+	generatedAt: string;
+	rpcHost: string;
+	thresholds: Record<string, { warning?: number; critical?: number }>;
+	note: string;
+	points: BacktestPoint[];
+	firstWarningBlock: number | null;
+	firstCriticalBlock: number | null;
+	peakTotalAssets: string;
+	peakBalances: Record<string, string>;
+	totalAssetsAtFirstCritical: string | null;
+	pctOfPeakRemainingAtFirstCritical: number | null;
+}

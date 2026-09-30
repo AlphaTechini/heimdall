@@ -21,9 +21,9 @@
 
 	// Marker color only where it means severity or the outcome of an exit.
 	function marker(e: HeimdallEvent): string {
+		if (e.kind === 'exit_complete') return 'border-fjord';
 		if (e.severity === 'critical' || e.kind === 'exit_failed') return 'border-ember';
 		if (e.severity === 'warning') return 'border-amber';
-		if (e.kind === 'exit_complete') return 'border-fjord';
 		return 'border-transparent';
 	}
 </script>
