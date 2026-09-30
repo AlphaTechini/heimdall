@@ -12,7 +12,7 @@ pragma solidity 0.8.28;
 import {Script, console} from "forge-std/Script.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {HeimdallGuardFactory} from "../../src/HeimdallGuardFactory.sol";
-import {MockERC20, MockLendingVault, MockAavePool} from "../mocks/Mocks.sol";
+import {MockERC20, MockLendingVault, MockAavePool, MockPriceFeed} from "../mocks/Mocks.sol";
 
 contract LocalDev is Script {
     // anvil default mnemonic accounts
@@ -33,6 +33,13 @@ contract LocalDev is Script {
         MockAavePool pool = new MockAavePool();
         address aToken = pool.addReserve(address(usdc));
         HeimdallGuardFactory factory = new HeimdallGuardFactory(address(pool), vm.addr(DEPLOYER_PK), KEEPER);
+        // Chainlink-style feeds (8 decimals): the price the markets use, an independent
+        // reference, a stablecoin collateral price, and ETH/USD for tip conversion.
+        // Local mock values only; the demo fork reads real feeds.
+        MockPriceFeed marketFeed = new MockPriceFeed(8, 1e8);
+        MockPriceFeed referenceFeed = new MockPriceFeed(8, 1e8);
+        MockPriceFeed collateralFeed = new MockPriceFeed(8, 1e8);
+        MockPriceFeed ethUsdFeed = new MockPriceFeed(8, 2_500e8);
         usdc.mint(ada, 15_000e6);
         usdc.mint(ben, 10_000e6);
         usdc.mint(crowd, 200_000e6);
@@ -53,6 +60,8 @@ contract LocalDev is Script {
         vm.startBroadcast(CROWD_PK);
         usdc.approve(address(vault), type(uint256).max);
         vault.deposit(200_000e6, crowd);
+        // Borrowers use 60% of the vault, like a real lending vault.
+        vault.lend(132_000e6, crowd);
         vm.stopBroadcast();
 
         string memory obj = "local";
@@ -62,6 +71,12 @@ contract LocalDev is Script {
         vm.serializeAddress(obj, "vault", address(vault));
         vm.serializeAddress(obj, "aavePool", address(pool));
         vm.serializeAddress(obj, "aToken", aToken);
+        vm.serializeAddress(obj, "marketFeed", address(marketFeed));
+        vm.serializeAddress(obj, "referenceFeed", address(referenceFeed));
+        vm.serializeAddress(obj, "collateralFeed", address(collateralFeed));
+        vm.serializeAddress(obj, "ethUsdFeed", address(ethUsdFeed));
+        vm.serializeAddress(obj, "deployer", vm.addr(DEPLOYER_PK));
+        vm.serializeAddress(obj, "keeper", KEEPER);
         vm.serializeAddress(obj, "ada", ada);
         vm.serializeAddress(obj, "ben", ben);
         string memory json = vm.serializeAddress(obj, "crowd", crowd);
