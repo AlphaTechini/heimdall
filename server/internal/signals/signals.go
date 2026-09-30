@@ -48,6 +48,7 @@ var Catalog = []Info{
 
 // Meta describes the target for formatting and the USD floor.
 type Meta struct {
+	Noun          string // "Vault" (default) or "Aave reserve": used in S1's sentence
 	Label         string
 	AssetSymbol   string
 	AssetDecimals int
@@ -269,7 +270,11 @@ func (e *Engine) Step(o Obs) Result {
 			if s1.Level == LevelCritical {
 				word = "Critical"
 			}
-			s1.Detail = fmt.Sprintf("Vault lost %s%% of assets (%s) in %ds (%s at %s%%)", pct(p), FormatAmount(abs, sym), win, word, pct(thr))
+			noun := e.meta.Noun
+			if noun == "" {
+				noun = "Vault"
+			}
+			s1.Detail = fmt.Sprintf("%s lost %s%% of assets (%s) in %ds (%s at %s%%)", noun, pct(p), FormatAmount(abs, sym), win, word, pct(thr))
 		}
 	}
 	raw["S1"] = s1

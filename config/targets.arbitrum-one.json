@@ -1,11 +1,20 @@
 {
   "chainId": 42161,
-  "note": "Every third-party address must come from official docs or Arbiscan (specs N8). Entries with address \"\" are placeholders the builder must fill in, with the source URL.",
+  "note": "Every third-party address must come from official docs or Arbiscan (specs N8). Entries with address \"\" are placeholders the builder must fill in, with the source URL. Optional signal and simulator fields below are PLACEHOLDERS until filled; a signal whose feed address is empty reports 'unavailable' (never a made-up value).",
+  "explorer": {
+    "name": "Arbiscan",
+    "txUrl": "https://arbiscan.io/tx/",
+    "addressUrl": "https://arbiscan.io/address/"
+  },
   "aaveV3": {
     "pool": {
       "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
       "source": "bgd-labs/aave-address-book src/AaveV3Arbitrum.sol (AaveV3Arbitrum.POOL), commit 17567521ae51088c85e01a6d8240f18b383bac2f"
     }
+  },
+  "ethUsdFeed": {
+    "address": "",
+    "source": "PLACEHOLDER: Chainlink ETH/USD price feed on Arbitrum One. Copy the proxy address from https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum (ETH / USD) and confirm it on https://arbiscan.io. Used to convert the priority-tip cap from USD to wei; with it empty the executor sends exits without a priority tip."
   },
   "targets": [
     {
@@ -18,7 +27,33 @@
       "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
       "assetSymbol": "USDC",
       "assetDecimals": 6,
-      "assetSource": "bgd-labs/aave-address-book src/AaveV3Arbitrum.sol (AaveV3ArbitrumAssets.USDCn_UNDERLYING)"
+      "assetSource": "bgd-labs/aave-address-book src/AaveV3Arbitrum.sol (AaveV3ArbitrumAssets.USDCn_UNDERLYING)",
+      "assetIsStable": true,
+      "signals": {
+        "marketFeed": {
+          "address": "",
+          "source": "PLACEHOLDER: the price feed the chosen vault's markets use for their main collateral (Chainlink-style: decimals and latestRoundData). Find it in the market's oracle on https://app.morpho.org or Arbiscan."
+        },
+        "referenceFeed": {
+          "address": "",
+          "source": "PLACEHOLDER: an independent Chainlink price feed for the same asset from https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum"
+        },
+        "collateralFeeds": [
+          {
+            "label": "PLACEHOLDER collateral",
+            "address": "",
+            "source": "PLACEHOLDER: Chainlink feed of a stablecoin used as collateral in the vault's markets"
+          }
+        ],
+        "liquidity": {
+          "mode": "exitable",
+          "holder": ""
+        }
+      },
+      "sim": {
+        "drainers": [],
+        "drainersSource": "PLACEHOLDER: addresses of the biggest share holders of the vault (Arbiscan token holders tab). The simulator impersonates them to pull liquidity out."
+      }
     },
     {
       "id": "aave-usdc",
@@ -33,9 +68,26 @@
       "assetSymbol": "USDC",
       "assetDecimals": 6,
       "oracle": "0xB0C9A7122aaB68F75CffD9851E867144DBFF113b",
-      "oracleSource": "bgd-labs/aave-address-book src/AaveV3Arbitrum.sol (AaveV3ArbitrumAssets.USDCn_ORACLE)"
+      "oracleSource": "bgd-labs/aave-address-book src/AaveV3Arbitrum.sol (AaveV3ArbitrumAssets.USDCn_ORACLE)",
+      "assetIsStable": true,
+      "signals": {
+        "liquidity": {
+          "mode": "idle"
+        },
+        "watchContracts": []
+      }
     }
   ],
+  "demo": {
+    "ada": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "adaSource": "anvil default account #1 (public test account, https://book.getfoundry.sh/anvil/)",
+    "ben": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "benSource": "anvil default account #2 (public test account, https://book.getfoundry.sh/anvil/)",
+    "usdcSource": {
+      "address": "",
+      "source": "PLACEHOLDER: an Arbitrum One account holding at least 25,000 USDC (pick a large holder from https://arbiscan.io/token/0xaf88d065e77c8cC2239327C5EDb3A432268e5831#balances and paste the Arbiscan URL here). The demo-seed command impersonates it on the fork to fund Ada and Ben."
+    }
+  },
   "sepolia": {
     "chainId": 421614,
     "aaveV3Pool": {

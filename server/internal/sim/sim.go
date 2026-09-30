@@ -131,7 +131,7 @@ func (s *Sim) Reset(ctx context.Context) error {
 	if err := s.snapshot(ctx); err != nil {
 		return err
 	}
-	s.event(0, "sim", "Simulation reset: the chain is back to where it started.")
+	s.event(s.snapBlk, "sim", "Simulation reset: the chain is back to where it started.")
 	return nil
 }
 

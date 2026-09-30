@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -29,7 +30,8 @@ type Client struct {
 func Dial(ctx context.Context, httpURL, wsURL string) (*Client, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	r, err := rpc.DialContext(ctx, httpURL)
+	// A hung node must not hang the watcher or an exit: every HTTP request has a timeout.
+	r, err := rpc.DialOptions(ctx, httpURL, rpc.WithHTTPClient(&http.Client{Timeout: 20 * time.Second}))
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to RPC_HTTP_URL: %w", err)
 	}
