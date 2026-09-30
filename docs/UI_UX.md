@@ -105,6 +105,10 @@ These rules exist because generated UIs often ship controls that look real but d
 
 **Simulator** (demo mode only)
 - Scenario select (Fast drain, Oracle tampering, Collateral depeg), **Run scenario**, **Reset fork**, live progress log, label "Simulated on an Arbitrum One fork".
+- Comparison panel: Ada (protected) vs Ben (unprotected) holding the same position, and the timeline first signal → exit submitted → exit confirmed → drain finished. (Added 2026-09-30: specs D3 requires the side-by-side; user_flow Scene 6.)
+
+**Transaction page** (`/tx/[hash]`, only used when the chain has no public explorer, i.e. the local fork)
+- Hash, block, status, priority fee, decoded Heimdall events. Explorer-style links in the app point here on the fork. (Added 2026-09-30: specs U3 allows "Arbiscan (or fork explorer) links"; UI_UX §5.8 requires links to go somewhere real.)
 
 **Backtest** (only with real data)
 - Incident select (only incidents that have real data loaded), chart of real outflows with the marker where Heimdall's rules fire, one-sentence caption, data source link.
