@@ -1,0 +1,60 @@
+# Heimdall local stack: Postgres + heimdalld + web.
+#
+# The chain runs on the host: start the Arbitrum One fork first with
+#   export ARBITRUM_ONE_RPC_URL=...; bash scripts/demo-fork.sh
+# (or `bash scripts/local-dev.sh` for the plain-anvil test-mock chain), then:
+#   docker compose up --build
+# Web: http://localhost:4173   API: http://localhost:8080
+#
+# Secrets come from your shell or a git-ignored .env next to this file (KEEPER_PRIVATE_KEY,
+# AUTH_SECRET, TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, RESEND_API_KEY, EMAIL_FROM).
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: heimdall
+      POSTGRES_PASSWORD: heimdall
+      POSTGRES_DB: heimdall
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U heimdall"]
+      interval: 2s
+      retries: 30
+
+  server:
+    build: ./server
+    depends_on:
+      postgres: { condition: service_healthy }
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    ports: ["8080:8080"]
+    volumes:
+      - ./config:/config:ro
+      - ./contracts/deployments:/deployments:ro
+    environment:
+      HTTP_ADDR: ":8080"
+      DATABASE_URL: postgres://heimdall:heimdall@postgres:5432/heimdall?sslmode=disable
+      RPC_HTTP_URL: http://host.docker.internal:8545
+      RPC_WS_URL: ws://host.docker.internal:8545
+      TARGETS_FILE: /config/${TARGETS:-targets.arbitrum-one.json}
+      SIGNALS_FILE: /config/signals.json
+      DEPLOYMENT_FILE: /deployments/31337.json
+      DEMO_MODE: ${DEMO_MODE:-true}
+      CORS_ORIGIN: http://localhost:4173,http://127.0.0.1:4173
+      KEEPER_PRIVATE_KEY: ${KEEPER_PRIVATE_KEY:?set KEEPER_PRIVATE_KEY - the fork uses anvil key 9 from scripts/demo-fork.sh}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET to a long random string}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+
+  web:
+    build:
+      context: ./web
+      args:
+        PUBLIC_API_URL: http://localhost:8080
+    depends_on: [server]
+    ports: ["4173:80"]
+
+volumes:
+  pgdata:
