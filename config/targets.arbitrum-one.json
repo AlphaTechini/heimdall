@@ -1,0 +1,46 @@
+{
+  "chainId": 42161,
+  "note": "Every third-party address must come from official docs or Arbiscan (specs N8). Entries with address \"\" are placeholders the builder must fill in, with the source URL.",
+  "aaveV3": {
+    "pool": {
+      "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+      "source": "bgd-labs/aave-address-book src/AaveV3Arbitrum.sol (AaveV3Arbitrum.POOL), commit 17567521ae51088c85e01a6d8240f18b383bac2f"
+    }
+  },
+  "targets": [
+    {
+      "id": "morpho-usdc",
+      "label": "Morpho vault (USDC)",
+      "protocol": "Morpho",
+      "type": "ERC4626",
+      "address": "",
+      "source": "PLACEHOLDER: pick a Morpho USDC vault on Arbitrum One from https://app.morpho.org (Arbitrum, Earn) and confirm it on https://arbiscan.io; paste the URL here",
+      "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      "assetSymbol": "USDC",
+      "assetDecimals": 6,
+      "assetSource": "bgd-labs/aave-address-book src/AaveV3Arbitrum.sol (AaveV3ArbitrumAssets.USDCn_UNDERLYING)"
+    },
+    {
+      "id": "aave-usdc",
+      "label": "Aave V3 (USDC)",
+      "protocol": "Aave V3",
+      "type": "AAVE_V3",
+      "address": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      "source": "bgd-labs/aave-address-book src/AaveV3Arbitrum.sol (AaveV3ArbitrumAssets.USDCn_UNDERLYING)",
+      "aToken": "0x724dc807b04555b71ed48a6896b6F41593b8C637",
+      "aTokenSource": "bgd-labs/aave-address-book src/AaveV3Arbitrum.sol (AaveV3ArbitrumAssets.USDCn_A_TOKEN)",
+      "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      "assetSymbol": "USDC",
+      "assetDecimals": 6,
+      "oracle": "0xB0C9A7122aaB68F75CffD9851E867144DBFF113b",
+      "oracleSource": "bgd-labs/aave-address-book src/AaveV3Arbitrum.sol (AaveV3ArbitrumAssets.USDCn_ORACLE)"
+    }
+  ],
+  "sepolia": {
+    "chainId": 421614,
+    "aaveV3Pool": {
+      "address": "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff",
+      "source": "bgd-labs/aave-address-book src/AaveV3ArbitrumSepolia.sol (AaveV3ArbitrumSepolia.POOL), commit 17567521ae51088c85e01a6d8240f18b383bac2f"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+.env
+out/
+cache/
+broadcast/*/31337/
+node_modules
+deployments/31337.json
