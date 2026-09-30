@@ -242,11 +242,11 @@ Two replay modes, both running the production `internal/signals` code over real 
 
 `heimdalld backtest --incident <id> --title "..." --rpc <archive RPC URL> --target <vault> --from <block> --to <block> [--step N] [--stable] [--source "urls"] --out config/backtests/<id>.json`
 
-**`--mode balance`**: for a pool/vault that is not ERC-4626 (for example the TMX pool, a GMX fork). S1 is computed from the summed `balanceOf(holder)` of the listed tokens per block; S2 is unavailable (the file's `note` says so).
+**`--mode balance`**: for a pool/vault that is not ERC-4626 (for example the TMX pool, a GMX fork). S1 is computed from `balanceOf(holder)` of the listed tokens per block; S2 is unavailable (the file's `note` says so).
 
 `heimdalld backtest --incident tmx-2026-01 --title "TMX, January 2026" --mode balance --holder <pool/vault contract> --token <ERC-20>[,<ERC-20>...] --rpc <archive RPC URL> --from <block> --to <block> [--step N] [--stable] --source "<Rekt URL>, <SlowMist URL>, <Arbiscan URL>" --out config/backtests/tmx-2026-01.json`
 
-- Without `--stable` the sum is in token units of the first listed token (other tokens are scaled to its decimals and added 1:1) and `note` says no prices were applied. With `--stable`, every listed token counts as $1 and the S1 USD floor applies.
+- No prices are ever applied (specs N7). Without `--stable`, S1 is computed **per token** (each token's own % drop over the window, its own engine) and the largest per-token outflow is what the point's `outflowPct`, `levels` and `severity` report; tokens are never added together and the S1 USD floor is not applied (`note` says so). With `--stable`, every listed token counts as $1: balances are summed (scaled to the first token's decimals) and the USD floor applies. A single token is just its own balance.
 - `--source` is copied into `note` so the page can show where the addresses and block range came from.
 - `--step N` replays every Nth block (use it for long ranges).
 - A database is optional: with `DATABASE_URL` set the run is also recorded in `backtest_runs`.
@@ -257,11 +257,12 @@ Output file (served as-is by `GET /backtests/{id}`):
 
 ```json
 { "id":"tmx-2026-01", "title":"...", "incident":"tmx-2026-01", "chainId":42161,
-  "mode":"balance", "tokens":["0x.."], "target":"0x.. (vault, or the holder in balance mode)", "asset":"0x.. (first token)", "assetDecimals":6,
+  "mode":"balance", "tokens":["0x..","0x.."], "tokenDecimals":{"0x..":6,"0x..":18},
+  "target":"0x.. (vault, or the holder in balance mode)", "asset":"0x.. (first token)", "assetDecimals":6,
   "fromBlock":1, "toBlock":2, "step":1, "generatedAt":"...", "rpcHost":"host only, no key",
   "thresholds": { "S1": {"warning":5,"critical":15}, "...": {} }, "note":"...incl. Source: ...",
-  "points": [ { "block":1, "time":"...", "totalAssets":"...", "sharePrice":"", "outflowPct":0.4, "shareDropPct":0, "severity":"watch", "levels":{"S1":"ok","S2":"unavailable"} } ],
-  "firstWarningBlock": 10, "firstCriticalBlock": 12, "peakTotalAssets":"...",
+  "points": [ { "block":1, "time":"...", "totalAssets":"...", "balances":{"0x..":"raw","0x..":"raw"}, "sharePrice":"", "outflowPct":0.4, "shareDropPct":0, "severity":"watch", "levels":{"S1":"ok","S2":"unavailable"} } ],
+  "firstWarningBlock": 10, "firstCriticalBlock": 12, "peakTotalAssets":"...", "peakBalances":{"0x..":"raw"},
   "totalAssetsAtFirstCritical":"...", "pctOfPeakRemainingAtFirstCritical": 71.2 }
 ```
-`totalAssets` holds the vault's `totalAssets()` (erc4626) or the summed balance (balance). `sharePrice` is `""` in balance mode. `firstWarningBlock`, `firstCriticalBlock`, `totalAssetsAtFirstCritical` and `pctOfPeakRemainingAtFirstCritical` are `null` when the rules never fired. S3-S6 are never replayed; `note` says so. Generated files must come from a real archive RPC; never edit numbers by hand (specs N7).
+`balances` (raw base units per token address, both modes; in erc4626 mode the single entry is the vault's `totalAssets()`), `tokenDecimals` and `peakBalances` are always present, so the web can chart each token as a percentage of its own peak. `totalAssets` holds the vault's `totalAssets()` (erc4626), the balance (one token) or the $1-summed balance (`--stable`); it is `""` for several tokens without `--stable`, and then `peakTotalAssets` is `""` and `totalAssetsAtFirstCritical` is `null`. `pctOfPeakRemainingAtFirstCritical` is, for several tokens without `--stable`, the lowest share of its own peak that any token had left at the first Critical. `sharePrice` is `""` in balance mode. `firstWarningBlock`, `firstCriticalBlock`, `totalAssetsAtFirstCritical` and `pctOfPeakRemainingAtFirstCritical` are `null` when the rules never fired. S3-S6 are never replayed; `note` says so. Generated files must come from a real archive RPC; never edit numbers by hand (specs N7).
