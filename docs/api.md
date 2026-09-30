@@ -236,16 +236,32 @@ Sent to the Guard owner's linked Telegram chat and verified email for: severity 
 
 ## 8. Backtest data (implemented)
 
-`heimdalld backtest --incident tmx-2026-01 --title "TMX, January 2026" --rpc <archive RPC URL> --target <ERC-4626 vault> --from <block> --to <block> [--step N] [--stable] --out config/backtests/tmx-2026-01.json`
+Two replay modes, both running the production `internal/signals` code over real historical blocks read from an archive RPC. Nothing is written if a block cannot be read, and no prices are ever invented.
 
-Replays S1 (outflow) and S2 (share price) with the same `internal/signals` code as production over real historical blocks (`totalAssets()` and `convertToAssets()` at each block via the archive node). It writes nothing if a block cannot be read. Output file (served as-is by `GET /backtests/{id}`):
+**`--mode erc4626` (default)**: for an ERC-4626 vault. S1 from `totalAssets()`, S2 from `convertToAssets()`.
+
+`heimdalld backtest --incident <id> --title "..." --rpc <archive RPC URL> --target <vault> --from <block> --to <block> [--step N] [--stable] [--source "urls"] --out config/backtests/<id>.json`
+
+**`--mode balance`**: for a pool/vault that is not ERC-4626 (for example the TMX pool, a GMX fork). S1 is computed from the summed `balanceOf(holder)` of the listed tokens per block; S2 is unavailable (the file's `note` says so).
+
+`heimdalld backtest --incident tmx-2026-01 --title "TMX, January 2026" --mode balance --holder <pool/vault contract> --token <ERC-20>[,<ERC-20>...] --rpc <archive RPC URL> --from <block> --to <block> [--step N] [--stable] --source "<Rekt URL>, <SlowMist URL>, <Arbiscan URL>" --out config/backtests/tmx-2026-01.json`
+
+- Without `--stable` the sum is in token units of the first listed token (other tokens are scaled to its decimals and added 1:1) and `note` says no prices were applied. With `--stable`, every listed token counts as $1 and the S1 USD floor applies.
+- `--source` is copied into `note` so the page can show where the addresses and block range came from.
+- `--step N` replays every Nth block (use it for long ranges).
+- A database is optional: with `DATABASE_URL` set the run is also recorded in `backtest_runs`.
+
+Builder steps for the TMX replay: (1) from the Rekt and SlowMist write-ups and Arbiscan, find the exploited pool/vault contract address, the ERC-20 tokens it holds, and the block range (a little before the first attacker transaction to a little after the last; Jan 5-7, 2026); (2) get an Arbitrum One archive RPC URL (QuickNode is a buildathon sponsor); (3) run the balance-mode command above from `server/` with `--source` listing those URLs; (4) check `config/backtests/tmx-2026-01.json`, restart nothing (the server reads the file on request), and open the Backtest page. If the data cannot be obtained, leave the folder empty and the page stays hidden (specs N7).
+
+Output file (served as-is by `GET /backtests/{id}`):
 
 ```json
-{ "id":"tmx-2026-01", "title":"...", "incident":"tmx-2026-01", "chainId":42161, "target":"0x..", "asset":"0x..", "assetDecimals":6,
+{ "id":"tmx-2026-01", "title":"...", "incident":"tmx-2026-01", "chainId":42161,
+  "mode":"balance", "tokens":["0x.."], "target":"0x.. (vault, or the holder in balance mode)", "asset":"0x.. (first token)", "assetDecimals":6,
   "fromBlock":1, "toBlock":2, "step":1, "generatedAt":"...", "rpcHost":"host only, no key",
-  "thresholds": { "S1": {"warning":5,"critical":15}, "...": {} }, "note":"...",
-  "points": [ { "block":1, "time":"...", "totalAssets":"...", "sharePrice":"...", "outflowPct":0.4, "shareDropPct":0, "severity":"watch", "levels":{"S1":"ok","S2":"ok"} } ],
+  "thresholds": { "S1": {"warning":5,"critical":15}, "...": {} }, "note":"...incl. Source: ...",
+  "points": [ { "block":1, "time":"...", "totalAssets":"...", "sharePrice":"", "outflowPct":0.4, "shareDropPct":0, "severity":"watch", "levels":{"S1":"ok","S2":"unavailable"} } ],
   "firstWarningBlock": 10, "firstCriticalBlock": 12, "peakTotalAssets":"...",
   "totalAssetsAtFirstCritical":"...", "pctOfPeakRemainingAtFirstCritical": 71.2 }
 ```
-`firstWarningBlock`, `firstCriticalBlock`, `totalAssetsAtFirstCritical` and `pctOfPeakRemainingAtFirstCritical` are `null` when the rules never fired. Only S1 and S2 are replayed (S3-S6 need feeds and logs the replay does not read); `note` says so. Generated files must come from a real archive RPC; never edit numbers by hand (specs N7).
+`totalAssets` holds the vault's `totalAssets()` (erc4626) or the summed balance (balance). `sharePrice` is `""` in balance mode. `firstWarningBlock`, `firstCriticalBlock`, `totalAssetsAtFirstCritical` and `pctOfPeakRemainingAtFirstCritical` are `null` when the rules never fired. S3-S6 are never replayed; `note` says so. Generated files must come from a real archive RPC; never edit numbers by hand (specs N7).
