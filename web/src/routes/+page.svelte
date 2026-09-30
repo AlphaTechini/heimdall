@@ -13,7 +13,7 @@
 	import WalletNotice from '$lib/components/WalletNotice.svelte';
 	import { live } from '$lib/live.svelte';
 
-	const feed = new ActivityFeed(10);
+	const feed = new ActivityFeed(10, true);
 	let protecting = $state<ConfigTarget | null>(null);
 	let retrying = $state(false);
 
@@ -139,8 +139,8 @@
 				{feed}
 				compact
 				emptyText={wallet.connected
-					? 'Nothing yet. Checks, alerts and exits for your positions appear here.'
-					: 'Nothing yet. Checks, alerts and exits appear here.'}
+					? 'Nothing yet. Risk changes, alerts and exits for your positions appear here.'
+					: 'Nothing yet. Risk changes, alerts and exits appear here.'}
 			/>
 		</div>
 		<p class="mt-4">

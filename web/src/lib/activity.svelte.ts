@@ -14,9 +14,12 @@ export class ActivityFeed {
 	private targetId: string | null = null;
 	private controller: AbortController | null = null;
 	private limit: number;
+	private hideChecks: boolean;
 
-	constructor(limit: number) {
+	/** `hideChecks`: the dashboard rail shows changes and exits, not the routine 30-second check lines. */
+	constructor(limit: number, hideChecks = false) {
 		this.limit = limit;
+		this.hideChecks = hideChecks;
 	}
 
 	async load(address: string | null, targetId: string | null) {
@@ -27,9 +30,14 @@ export class ActivityFeed {
 		this.controller = controller;
 		this.status = 'loading';
 		try {
-			const res = await api.activity({ address, targetId, limit: this.limit }, controller.signal);
+			const res = await api.activity(
+				{ address, targetId, limit: this.hideChecks ? this.limit * 5 : this.limit },
+				controller.signal
+			);
 			if (controller.signal.aborted) return;
-			this.events = res.events;
+			this.events = (
+				this.hideChecks ? res.events.filter((e) => e.kind !== 'check') : res.events
+			).slice(0, this.limit);
 			this.status = 'ready';
 			this.error = '';
 		} catch (e) {
@@ -55,6 +63,7 @@ export class ActivityFeed {
 
 	add(event: HeimdallEvent) {
 		if (this.status !== 'ready' || !this.accepts(event)) return;
+		if (this.hideChecks && event.kind === 'check') return;
 		if (this.events.some((e) => e.id === event.id)) return;
 		this.events = [event, ...this.events].slice(0, this.limit);
 	}

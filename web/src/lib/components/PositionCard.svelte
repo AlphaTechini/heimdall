@@ -39,6 +39,11 @@
 	const toggle = actions.toggle;
 	const withdraw = actions.withdraw;
 
+	const returnedNote = $derived(
+		position.status === 'exiting'
+			? `, ${formatAmount(position.returnedAmount, target.assetDecimals)} ${target.assetSymbol} already returned`
+			: ''
+	);
 	const nothingToWithdraw = $derived(isZero(position.guardedPositionTokens));
 	const busy = $derived(actions.busy);
 </script>
@@ -48,7 +53,9 @@
 	aria-labelledby="{uid}-title"
 >
 	<HornBand word={band.word} tone={band.tone}>
-		<p class="font-medium">{STATUS_LABEL[position.status]}</p>
+		{#if STATUS_LABEL[position.status] !== band.word}
+			<p class="font-medium">{STATUS_LABEL[position.status]}</p>
+		{/if}
 		{#if snapshot && snapshot.severity !== 'watch' && position.status !== 'exited'}
 			<p class="mt-0.5">{snapshot.reason}</p>
 		{/if}
@@ -62,11 +69,7 @@
 				<span class="text-xl font-medium">{target.assetSymbol}</span>
 			</p>
 			<p class="text-sm text-granite-dark">
-				{shown.note}
-				{#if position.status === 'exiting'}
-					. {formatAmount(position.returnedAmount, target.assetDecimals)}
-					{target.assetSymbol} already returned
-				{/if}
+				{shown.note}{returnedNote}
 			</p>
 		</div>
 
@@ -95,7 +98,7 @@
 			</p>
 		{/if}
 
-		<div class="flex flex-wrap gap-3">
+		<div class="flex flex-wrap gap-3 max-sm:[&>*]:w-full max-sm:[&>a]:text-center">
 			{#if position.status === 'unprotected'}
 				<button
 					type="button"

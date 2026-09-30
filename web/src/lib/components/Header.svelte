@@ -19,6 +19,15 @@
 			label: 'Activity',
 			match: (p: string) => p.startsWith('/activity')
 		},
+		...(app.backtests.length > 0
+			? [
+					{
+						href: resolve('/backtest'),
+						label: 'Backtest',
+						match: (p: string) => p.startsWith('/backtest')
+					}
+				]
+			: []),
 		{
 			href: resolve('/settings'),
 			label: 'Settings',

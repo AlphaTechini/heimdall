@@ -192,7 +192,7 @@
 			</ul>
 		{/if}
 
-		<div class="mt-4 flex flex-wrap gap-3">
+		<div class="mt-4 flex flex-wrap gap-3 max-sm:[&>*]:w-full max-sm:[&>a]:text-center">
 			<button
 				type="button"
 				class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
@@ -239,7 +239,7 @@
 				<ol class="space-y-1 text-sm tabular">
 					{#each lines as l, i (i)}
 						<li>
-							{l.line}{#if l.done}<span class="font-semibold"> Finished.</span>{/if}
+							{l.line}{#if l.done}&nbsp;<span class="font-semibold">Finished.</span>{/if}
 						</li>
 					{/each}
 				</ol>
@@ -297,7 +297,7 @@
 									>{row.block === null ? 'Not yet' : `Block ${row.block}`}</span
 								>
 							</div>
-							<div class="relative mt-1 h-2 rounded-full bg-line" aria-hidden="true">
+							<div class="relative mx-1.5 mt-1 h-2 rounded-full bg-line" aria-hidden="true">
 								{#if row.block !== null}
 									<span
 										class="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-fjord"

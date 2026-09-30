@@ -2,6 +2,8 @@ import { API_URL } from './env';
 import { AppError } from './errors';
 import type {
 	AppConfig,
+	Backtest,
+	BacktestSummary,
 	Exit,
 	HeimdallEvent,
 	Policy,
@@ -99,6 +101,11 @@ export const api = {
 		signal?: AbortSignal
 	) => request<{ events: HeimdallEvent[] }>(`/activity${q(params)}`, { signal }),
 	exit: (id: number, signal?: AbortSignal) => request<Exit>(`/exits/${id}`, { signal }),
+	exits: (params: { guard: string; targetId: string; limit?: number }, signal?: AbortSignal) =>
+		request<{ exits: Exit[] }>(`/exits${q(params)}`, { signal }),
+	backtests: () => request<{ backtests: BacktestSummary[] }>('/backtests'),
+	backtest: (id: string, signal?: AbortSignal) =>
+		request<Backtest>(`/backtests/${encodeURIComponent(id)}`, { signal }),
 	tx: (hash: string, signal?: AbortSignal) =>
 		request<TxInfo>(`/tx/${encodeURIComponent(hash)}`, { signal }),
 
