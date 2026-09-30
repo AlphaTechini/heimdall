@@ -1,7 +1,7 @@
 # Heimdall: server API and config contract
 
 > Audience: coding agents building `server/` and `web/`. This is the shared contract between them.
-> `docs/specs.md` wins on conflicts. Written 2026-09-30 by the planning agent.
+> `docs/specs.md` wins on conflicts. Written 2026-09-30 by the planning agent. Updated by the server agent to match the implemented `heimdalld` (changes are marked "(implemented)").
 
 All amounts in JSON are **decimal strings of base units** (e.g. `"10000000000"` for 10,000 USDC with 6 decimals) plus a `decimals` field where needed. Addresses are checksummed hex strings. Times are RFC 3339 UTC strings. Block numbers are JSON numbers.
 
@@ -79,7 +79,11 @@ Signal thresholds live in `config/signals.json` (specs W1), loaded by the server
 
 `HTTP_ADDR` (`:8080`), `DATABASE_URL`, `RPC_HTTP_URL`, `RPC_WS_URL` (optional; poll `eth_blockNumber` every 250 ms if unset), `TARGETS_FILE`, `SIGNALS_FILE`, `FACTORY_ADDRESS` (or `DEPLOYMENT_FILE` = `contracts/deployments/<chainId>.json`), `KEEPER_PRIVATE_KEY` (never logged, never sent to the web), `DEMO_MODE`, `AUTH_SECRET`, `CORS_ORIGIN`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `RESEND_API_KEY`, `EMAIL_FROM`, `DEFAULT_TIP_CAP_USD` (`2`).
 
-Missing Telegram/Resend credentials disable that channel (logged once); the API reports `telegramEnabled` / `emailEnabled` so the web can explain why a control is disabled.
+(implemented) Also: `START_BLOCK` (first block to scan for `GuardCreated`; default: the anvil fork block, or 0, on chain 31337; the current block elsewhere), `BACKTESTS_DIR` (default: `backtests/` next to `TARGETS_FILE`), `LOG_LEVEL` (`info`|`debug`). `DATABASE_URL`, `RPC_HTTP_URL` and `KEEPER_PRIVATE_KEY` are required; startup fails with a list of everything that is wrong. If `AUTH_SECRET` is empty a random one is used (sign-ins end on restart). A `.env` file in the working directory is read if present. Test-only: `TELEGRAM_API_BASE` and `RESEND_BASE_URL` point the notifiers at a local stub.
+
+Missing Telegram/Resend credentials disable that channel (logged once); the API reports `telegramEnabled` / `emailEnabled` so the web can explain why a control is disabled. (implemented) `telegramEnabled` is true only when both `TELEGRAM_BOT_TOKEN` and `TELEGRAM_BOT_USERNAME` are set; `emailEnabled` needs both `RESEND_API_KEY` and `EMAIL_FROM`.
+
+Subcommands of the same binary (implemented): `heimdalld` (server), `heimdalld demo-seed`, `heimdalld backtest ...` (section 8).
 
 ## 4. Signals (details.md §8.3, specs W1–W4)
 
@@ -98,13 +102,15 @@ Each signal has `level`: `ok` \| `warning` \| `critical` \| `unavailable`, a num
 
 S1 ignores outflow caused by Heimdall exits in the same window (W4: add back `amountOut` of `Exited` events from known Guards). S5 `idle` mode: available = `asset.balanceOf(holder)` (holder defaults to the vault / aToken); utilization = 1 − available / totalAssets. S5 `exitable` mode (real MetaMorpho vaults where idle cash sits in Morpho Blue): available = `vault.maxWithdraw(guard)` compared with the guard's position. S6 watches `OwnershipTransferred(address,address)`, `Upgraded(address)`, `AdminChanged(address,address)`, `Paused(address)`, `Unpaused(address)` on `watchContracts`.
 
+Implementation notes (implemented): S1 measures the drop of `totalAssets()` (ERC-4626) or of reserve cash `asset.balanceOf(aToken)` (Aave) against the highest value seen inside the window (60 s and 600 s), after adding back the `amountOut` of every `Exited` event of known Guards (W4); drops below `usdFloor` are ignored when `assetIsStable`. S2 compares `convertToAssets(10^decimals)` (Aave: `liquidityIndex`, `unavailable` when the pool reports 0) with the highest value in the last 600 s. S3 is `|market - reference| / reference` in percent. S4 uses the lowest collateral feed. S5 never goes above Warning; its `value` is utilization in percent. S6 stays at Warning for `critComboWindowSec` after a matching log; config changes found while catching up on history at a fresh start are ignored. A signal that is at its Critical threshold but not yet confirmed is reported as `warning` with "Confirming (1 of 2 checks)" in `detail`. Two-Warnings rule: at least two different signals were at Warning-or-worse within `twoWarningsWindowSec` and one is still at Warning now. Severity is recomputed on every check, so it can also go down.
+
 Severity per target (not per guard): `watch` \| `warning` \| `critical`, per details.md §8.3 + specs W2 (S2 immediate; other Criticals need `debounceChecks` consecutive checks; two different Warnings within `twoWarningsWindowSec` → Critical).
 
 ## 5. REST endpoints
 
 ### Public
 
-- `GET /healthz` → `{"ok":true,"chainId":31337,"block":123}`
+- `GET /healthz` → `{"ok":true,"chainId":31337,"block":123}` (implemented: 503 `{"ok":false,"error":"..."}` when the node does not answer)
 - `GET /config` →
 ```json
 { "chainId": 31337, "chainName": "Local Arbitrum One fork", "demoMode": true, "factory": "0x...",
@@ -115,7 +121,7 @@ Severity per target (not per guard): `watch` \| `warning` \| `critical`, per det
                  "address":"0x...","positionToken":"0x...","asset":"0x...","assetSymbol":"USDC","assetDecimals":6 } ],
   "signals": [ { "id":"S1","label":"Outflow","tooltip":"..." } ] }
 ```
-  `positionToken` is the token the Guard holds (vault address for ERC4626, aToken for AAVE_V3). The web uses it for `approve`.
+  `positionToken` is the token the Guard holds (vault address for ERC4626, aToken for AAVE_V3). The web uses it for `approve`. (implemented) `chainName` is "Arbitrum One", "Arbitrum Sepolia", "Local Arbitrum One fork", or "Local development chain (test mocks)" when a target has `sim.mockVault`. `demoMode` is the result of the simulator guard, not just the env var.
 
 - `GET /positions?address=0x..` → the wallet's supported positions (one entry per target where wallet or its Guard holds > 0, plus Guarded/Exited ones with 0 left):
 ```json
@@ -134,11 +140,13 @@ Severity per target (not per guard): `watch` \| `warning` \| `critical`, per det
     "policy": Policy | null,
     "lastExit": Exit | null } ] }
 ```
+  (implemented) `policy` is the policy saved for that Guard position, or `null` when none was saved (the Guard then uses the owner's default policy). `keeperEnabled`/`paused` are `false` while there is no Guard. `severity` is the target's current severity. Amounts in underlying units are `convertToAssets` of the token balance (Aave: 1:1).
+
   `status`: `exiting` while the executor has an active exit job for (guard, target); `exited` when the last exit left 0 guarded and no job is active; `guarded` when the Guard holds > 0; else `unprotected`.
 
 - `GET /signals/{targetId}` → `{ "targetId":"...", "severity":"watch", "reason":"...", "updatedAt":"...", "block":123, "signals":[ {"id":"S1","level":"ok","value":0.4,"unit":"%/60s","detail":"..."} ] }`
 - `GET /signals/{targetId}/history?limit=200` → `{ "points": [ { "block":1, "time":"...", "severity":"watch", "signals":[ {"id":"S1","level":"ok","value":0.4} ] } ], "thresholds": { "S1": {"warning":5,"critical":15}, ... } }`
-- `GET /guards/{guard}` → `{ "guard":"0x...","owner":"0x...","keeperEnabled":true,"paused":false,"createdBlock":12 }`
+- `GET /guards/{guard}` → `{ "guard":"0x...","owner":"0x...","keeperEnabled":true,"paused":false,"createdBlock":12 }` (implemented: 404 unless the factory created that address; `createdBlock` is 0 when the Guard was found lazily and its creation block is unknown)
 - `GET /activity?address=0x..&targetId=&limit=50` → `{ "events": [ Event ] }` newest first. Without `address`: global feed (demo). `targetId` filters.
 - `GET /exits/{id}` → `Exit`
 - `GET /tx/{hash}` → fork explorer data: `{ "hash","blockNumber","from","to","status":"success"|"reverted","gasUsed","effectiveGasPrice","maxPriorityFeePerGas","logs":[{"address","name":"Exited"|null,"args":{...}}] }` (decode Heimdall events only).
@@ -150,6 +158,8 @@ Severity per target (not per guard): `watch` \| `warning` \| `critical`, per det
   "message": "Partial exit: 6,200 USDC withdrawn (all available). Retrying for the rest every block.",
   "txHash": "0x..." | null, "exitId": 3 | null }
 ```
+(implemented) `alert` events are also written for S6 config changes on watched contracts ("Config change on Vault: ownership transferred.") and for `ask_first` positions on Critical. `sim` events carry the simulator's progress lines, prefixed with "Simulated on an Arbitrum One fork: ". `guard` events: Guard created, position moved in/out, keeper toggled, keeper exits paused/resumed. Exit events (`exit_submitted`, `exit_partial`, `exit_complete`) are also sent as alerts (section 7); `exit_failed` covers a refused/failed exit, a stop, a timeout, and "keeper is turned off/paused so Heimdall did not exit".
+
 `check` events are not stored per block; the watcher emits at most one `check` event per 30 s per target ("Watching 6 signals, last check 0.3s ago" is computed by the web from `/signals` `updatedAt`).
 
 `Exit`:
@@ -162,11 +172,12 @@ Severity per target (not per guard): `watch` \| `warning` \| `critical`, per det
                               "amountOut":"6200000000", "burned":"...", "remaining":"...", "result":"exited" | "deferred" | "reverted" | "pending" | "replaced" } ],
   "totalOut":"10000000000", "startBlock":124, "endBlock":127 }
 ```
+(implemented) Extra fields: `tipNote` (why no priority tip was added, e.g. no ETH/USD feed configured; empty otherwise); per tx `sentBlock`, `nonce`, `maxFeePerGasWei`, `gasLimit`. `block` of a tx and `endBlock` are `null` until known. `tipUsd` is the maximum tip spend (tip x gas limit) while `pending` and the actual spend (tip x gas used) once mined. `decisionToBroadcastMs` is measured from the moment the watcher decided Critical/Warning to the transaction being accepted by the node (specs W5); it is `null` for exits the executor did not start. Exits started by the owner (`trigger:"owner"`) or by a keeper transaction from an earlier run (`"manual_keeper"`) are recorded from the `Exited`/`ExitDeferred` logs with `severity:"watch"`, `tipCapUsd:0` and status `complete`.
 
 ### Auth (SIWE, specs U4)
 
-- `GET /auth/nonce?address=0x..` → `{ "nonce":"...", "message":"<full EIP-4361 message to sign>" }` (server builds the message: domain from `Origin` header host, chain id, nonce, issued-at, statement "Sign in to Heimdall to change your protection settings.")
-- `POST /auth/verify` body `{ "address":"0x..", "message":"...", "signature":"0x.." }` → `{ "token":"...", "address":"0x..", "expiresAt":"..." }` (personal_sign recovery; nonce single-use, 10 min). Token = HMAC(`AUTH_SECRET`) bearer, 24 h. The web sends `Authorization: Bearer <token>`.
+- `GET /auth/nonce?address=0x..` → `{ "nonce":"...", "message":"<full EIP-4361 message to sign>" }` (server builds the message: domain from `Origin` header host (falls back to `Host`), URI = the origin, chain id, nonce, issued-at, statement "Sign in to Heimdall to change your protection settings."). (implemented) The server stores the exact message with the nonce; `/auth/verify` requires the identical message back.
+- `POST /auth/verify` body `{ "address":"0x..", "message":"...", "signature":"0x.." }` → `{ "token":"...", "address":"0x..", "expiresAt":"..." }` (personal_sign recovery, `v` may be 0/1 or 27/28; nonce single-use, 10 min). Token = HMAC(`AUTH_SECRET`) bearer, 24 h, opaque to the web. The web sends `Authorization: Bearer <token>`. (implemented) Errors: 401 with a plain-English message for a used/expired nonce, a message that differs from the one issued, or a signature that does not match the address.
 
 ### Authenticated (bearer token; address in token is the actor)
 
@@ -175,11 +186,11 @@ Severity per target (not per guard): `watch` \| `warning` \| `critical`, per det
 - `PUT /me/default-policy` body `Policy` → `Policy`
 - `POST /me/telegram/link` → `{ "code":"H7K2QX", "deepLink":"https://t.me/<bot>?start=H7K2QX", "expiresAt":"..." }` (server long-polls `getUpdates` and links the chat on `/start <code>`)
 - `DELETE /me/telegram` → 204
-- `POST /me/telegram/test` → `{ "sent": true }` or 4xx with reason
+- `POST /me/telegram/test` → `{ "sent": true }` or 4xx/502 with reason
 - `POST /me/email` body `{ "email":"..." }` → `{ "sent": true }` (6-digit code, 10 min)
 - `POST /me/email/verify` body `{ "code":"123456" }` → `{ "verified": true }`
-- `POST /me/email/test` → `{ "sent": true }`
-- `POST /exits/{guard}/{targetId}/stop` → stops an active retry job (owner only)
+- `POST /me/email/test` → `{ "sent": true }` (implemented: 429 if repeated within 10 s; code requests 20 s apart; a code allows 5 wrong tries)
+- `POST /exits/{guard}/{targetId}/stop` → `{"stopped":true}`; stops an active retry job (owner only; 404 when no job is running). What is left stays in the Guard.
 
 `Policy`:
 ```json
@@ -188,15 +199,23 @@ Severity per target (not per guard): `watch` \| `warning` \| `critical`, per det
 ```
 Defaults: `auto_exit`, `notify`, `wallet_usdc`, `true`, `DEFAULT_TIP_CAP_USD`. Validation: `tipCapUsd` number, 0 < x ≤ 50. `sendTo` only `wallet_usdc` in the MVP (no USDG route verified). A Guard position with no stored policy uses the owner's default policy.
 
+(implemented) Policy semantics: severity changes create an *episode* (`target:block:severity`). For each guard that holds the target, once per episode: `auto_exit` on Critical = exit everything; `exit_half` on Warning = exit half of the position tokens held when the Warning began (the rest stays); `exit_full` on Warning = exit everything; `notify` = alerts only. Effective policy = the policy saved for (guard, target), else the owner's default, else the built-in default. The executor skips a guard whose keeper is turned off or paused and records an `exit_failed` event saying so. One job per (guard, target): it retries every block (only when the Guard reports something exitable) until the position (or the requested half) is out, the owner stops it, or `exitRetryTimeoutSec` passes. Priority tip: `capWei = tipCapUsd / ETH-USD * 1e18` using `ethUsdFeed`; `budgetWei = min(capWei, capWei * budgetPct / 100)` with `budgetPct` = `tip.criticalBudgetPct` (Critical) or `tip.warningBudgetPct` (Warning); `maxPriorityFeePerGas = budgetWei / gasLimit` (so tip x gasLimit <= cap always); `maxFeePerGas = 2 * baseFee + tip`. No `ethUsdFeed`, or `priorityExit:false` => tip 0 and `tipNote` says why. A transaction not mined after 3 blocks is replaced (same nonce) with a tip raised 30% but never above the cap, and a fee limit that covers the current base fee.
+
 `ask_first`: on Critical the server sends alerts and records an `alert` event; the owner exits via the web's **Exit now** (a wallet transaction calling `guard.exit` directly, not an API call).
 
 ### Demo only (§1 guard)
 
 - `GET /sim/scenarios` → `{ "label":"Simulated on an Arbitrum One fork", "scenarios":[ {"id":"fast-drain","name":"Fast drain","description":"...","available":true,"reason":null} , {"id":"oracle-tampering",...}, {"id":"collateral-depeg",...} ], "running": null | "fast-drain" }`
   A scenario whose inputs are placeholders reports `available:false` with a plain-English `reason`.
-- `POST /sim/scenarios/{id}/run` → 202 `{ "runId": 5 }`; 409 if one is running.
-- `POST /sim/reset` → restores the anvil snapshot taken at server start (`evm_snapshot` / `evm_revert`), clears exits/events/snapshots created after it, re-snapshots. 202.
+- `POST /sim/scenarios/{id}/run` → 202 `{ "runId": 5 }`; 409 if one is running; 404 unknown id; 400 with a plain-English reason when its inputs are placeholders. (implemented) `fast-drain` (local mocks): three drainer redemptions of 5.5% of assets, two blocks apart (Watch -> Warning -> Critical); then borrowers take idle cash so only ~62% of Ada's position can be withdrawn (partial exit); then new deposits arrive so the retry completes; then the drainers take the remaining cash. `oracle-tampering` and `collateral-depeg` move the feed to 97% then 88-90% of its value; on a fork the feed's code is replaced with `MockPriceFeed` via `anvil_setCode` and its storage slots (0 answer, 1 decimals, 2 timestamp, 3 round) rewritten via `anvil_setStorageAt`.
+- `POST /sim/reset` → restores the anvil snapshot taken at server start (`evm_snapshot` / `evm_revert`), clears exits/events/snapshots/guards/policies created after it, re-snapshots. 202 `{"reset":true}`; 409 while a scenario runs. (implemented) Guards created after the server started disappear with the chain state (the web must create the Guard again). Users, settings and notifications are kept.
 - `GET /sim/compare` → `{ "label":"Simulated on an Arbitrum One fork", "targetId":"morpho-usdc", "ada": {"address","inWallet":"...","inVault":"...","withdrawableNow":"..."}, "ben": {...}, "timeline": {"firstSignalBlock":..., "exitSubmittedBlock":..., "exitConfirmedBlock":..., "drainFinishedBlock":...} }`
+  (implemented) `inWallet` = underlying asset (USDC) in the wallet; `inVault` = underlying value of the vault shares in the wallet plus the Guard; `withdrawableNow` = `maxWithdraw` of the wallet plus what the Guard could exit right now. Timeline values are `null` until known (no run yet, or no exit); they come from the latest `fast-drain` run.
+
+### Backtests (implemented)
+
+- `GET /backtests` → `{ "backtests": [ { "id":"tmx-2026-01","title":"...","incident":"...","fromBlock":1,"toBlock":2,"generatedAt":"..." } ] }`. Lists only incidents whose data file exists in `BACKTESTS_DIR` (`config/backtests/<id>.json`); the list is empty until the builder generates one (section 8). The web must hide the Backtest page when the list is empty (specs N7).
+- `GET /backtests/{id}` → the file (404 with a plain-English message if it does not exist).
 
 ## 6. WebSocket `GET /stream`
 
@@ -206,8 +225,26 @@ Server → client JSON messages, no client messages required:
 - `{"type":"exit","data": Exit}` on exit job updates
 - `{"type":"sim","data": {"runId":5,"line":"Block 130: drainer 0xab.. redeemed 40,000 USDC","done":false}}`
 
+(implemented) On connect the server first sends one `signals` message per target. `sim` messages also carry `"label":"Simulated on an Arbitrum One fork"`. Origins in `CORS_ORIGIN` may connect.
+
 The web reconnects with backoff and refetches REST state after reconnect.
 
 ## 7. Notifications (specs U6)
 
 Sent to the Guard owner's linked Telegram chat and verified email for: severity → Warning, severity → Critical, exit submitted, partial exit, exit completed. Sending is asynchronous (buffered channel + worker); a failure is logged and stored in `notifications` with status, retried up to 3 times, and never blocks the executor.
+
+## 8. Backtest data (implemented)
+
+`heimdalld backtest --incident tmx-2026-01 --title "TMX, January 2026" --rpc <archive RPC URL> --target <ERC-4626 vault> --from <block> --to <block> [--step N] [--stable] --out config/backtests/tmx-2026-01.json`
+
+Replays S1 (outflow) and S2 (share price) with the same `internal/signals` code as production over real historical blocks (`totalAssets()` and `convertToAssets()` at each block via the archive node). It writes nothing if a block cannot be read. Output file (served as-is by `GET /backtests/{id}`):
+
+```json
+{ "id":"tmx-2026-01", "title":"...", "incident":"tmx-2026-01", "chainId":42161, "target":"0x..", "asset":"0x..", "assetDecimals":6,
+  "fromBlock":1, "toBlock":2, "step":1, "generatedAt":"...", "rpcHost":"host only, no key",
+  "thresholds": { "S1": {"warning":5,"critical":15}, "...": {} }, "note":"...",
+  "points": [ { "block":1, "time":"...", "totalAssets":"...", "sharePrice":"...", "outflowPct":0.4, "shareDropPct":0, "severity":"watch", "levels":{"S1":"ok","S2":"ok"} } ],
+  "firstWarningBlock": 10, "firstCriticalBlock": 12, "peakTotalAssets":"...",
+  "totalAssetsAtFirstCritical":"...", "pctOfPeakRemainingAtFirstCritical": 71.2 }
+```
+`firstWarningBlock`, `firstCriticalBlock`, `totalAssetsAtFirstCritical` and `pctOfPeakRemainingAtFirstCritical` are `null` when the rules never fired. Only S1 and S2 are replayed (S3-S6 need feeds and logs the replay does not read); `note` says so. Generated files must come from a real archive RPC; never edit numbers by hand (specs N7).

@@ -119,7 +119,11 @@ func (w *Watcher) resetStates() {
 	for i := range w.targets.Targets {
 		t := &w.targets.Targets[i]
 		ts := &targetState{t: t, severity: signals.SevWatch, readWarned: map[string]bool{}}
-		ts.eng = signals.NewEngine(w.sig, signals.Meta{Label: t.Label, AssetSymbol: t.AssetSymbol, AssetDecimals: t.AssetDecimals, AssetIsStable: t.AssetIsStable})
+		noun := "Vault"
+		if t.IsAave() {
+			noun = "Aave reserve"
+		}
+		ts.eng = signals.NewEngine(w.sig, signals.Meta{Noun: noun, Label: t.Label, AssetSymbol: t.AssetSymbol, AssetDecimals: t.AssetDecimals, AssetIsStable: t.AssetIsStable})
 		ts.latest = startingLatest(t.ID)
 		w.states[t.ID] = ts
 	}

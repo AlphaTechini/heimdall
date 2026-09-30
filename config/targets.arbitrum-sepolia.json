@@ -1,0 +1,20 @@
+{
+  "chainId": 421614,
+  "note": "Arbitrum Sepolia. Only the Aave V3 Pool is filled in, with its source. No vault targets yet: add one only with an address taken from official docs or Arbiscan Sepolia (specs N8).",
+  "explorer": {
+    "name": "Arbiscan (Sepolia)",
+    "txUrl": "https://sepolia.arbiscan.io/tx/",
+    "addressUrl": "https://sepolia.arbiscan.io/address/"
+  },
+  "aaveV3": {
+    "pool": {
+      "address": "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff",
+      "source": "bgd-labs/aave-address-book src/AaveV3ArbitrumSepolia.sol (AaveV3ArbitrumSepolia.POOL), commit 17567521ae51088c85e01a6d8240f18b383bac2f"
+    }
+  },
+  "ethUsdFeed": {
+    "address": "",
+    "source": "PLACEHOLDER: Chainlink ETH/USD on Arbitrum Sepolia from https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum&testnetPage=1"
+  },
+  "targets": []
+}

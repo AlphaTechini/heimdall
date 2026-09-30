@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -26,7 +27,11 @@ type Telegram struct {
 
 // NewTelegram creates the channel. An empty token disables it.
 func NewTelegram(token, botUsername string) *Telegram {
-	return &Telegram{token: token, Bot: botUsername, baseURL: "https://api.telegram.org", hc: &http.Client{Timeout: 40 * time.Second}}
+	base := "https://api.telegram.org"
+	if v := os.Getenv("TELEGRAM_API_BASE"); v != "" { // for tests against a local stub only
+		base = strings.TrimRight(v, "/")
+	}
+	return &Telegram{token: token, Bot: botUsername, baseURL: base, hc: &http.Client{Timeout: 40 * time.Second}}
 }
 
 func (t *Telegram) Name() string  { return "telegram" }

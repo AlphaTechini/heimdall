@@ -59,6 +59,7 @@ type pendingTx struct {
 	maxFee    *big.Int
 	sentBlock uint64
 	stuckNote bool
+	prev      []common.Hash // earlier versions of this transaction that were replaced (any of them may still be mined)
 }
 
 type job struct {
@@ -215,7 +216,10 @@ func (x *Executor) Trigger(tr Trigger) {
 
 		pol, err := x.pol.For(x.ctx, p.Guard.Hex(), p.Owner.Hex(), t.ID)
 		if err != nil {
-			slog.Error("cannot read policy; not exiting this position automatically", "guard", p.Guard, "err", err)
+			slog.Error("cannot read policy; will try again on the next check", "guard", p.Guard, "err", err)
+			x.mu.Lock()
+			delete(x.seen, ek)
+			x.mu.Unlock()
 			continue
 		}
 		act := policy.Decide(pol, tr.Severity)
@@ -350,7 +354,7 @@ func (x *Executor) step(j *job, hdr *types.Header) {
 		return
 	}
 	if time.Now().After(j.deadline) {
-		x.finish(j, "timeout", fmt.Sprintf("Stopped retrying after %d minutes. Anything left stays in your Guard; you can exit yourself at any time.", x.sig.ExitRetryTimeoutSec/60), head)
+		x.finish(j, "timeout", fmt.Sprintf("Stopped retrying after %s. Anything left stays in your Guard; you can exit yourself at any time.", humanSeconds(x.sig.ExitRetryTimeoutSec)), head)
 		return
 	}
 	if j.pending != nil {
@@ -541,16 +545,24 @@ func shortErr(err error) string {
 // transaction was mined and processed.
 func (x *Executor) checkPending(j *job, head uint64) bool {
 	p := j.pending
-	rc, err := x.ch.Eth.TransactionReceipt(x.ctx, p.hash)
-	if err != nil {
-		if !errors.Is(err, ethereum.NotFound) {
-			slog.Warn("cannot read receipt", "tx", p.hash, "err", err)
+	var rc *types.Receipt
+	var mined common.Hash
+	for _, h := range append([]common.Hash{p.hash}, p.prev...) {
+		r, err := x.ch.Eth.TransactionReceipt(x.ctx, h)
+		if err == nil {
+			rc, mined = r, h
+			break
 		}
+		if !errors.Is(err, ethereum.NotFound) {
+			slog.Warn("cannot read receipt", "tx", h, "err", err)
+		}
+	}
+	if rc == nil {
 		return false
 	}
 	blk := rc.BlockNumber.Uint64()
 	j.pending = nil
-	hashS := p.hash.Hex()
+	hashS := mined.Hex()
 	tipUSD := 0.0
 	if p.tip.Sign() > 0 {
 		if eth, err := x.feed.get(x.ctx); err == nil {
@@ -636,24 +648,29 @@ func (x *Executor) maybeReplace(j *job, hdr *types.Header) {
 	if p == nil || head < p.sentBlock+stuckAfterBlocks {
 		return
 	}
+	// A stuck transaction is replaced with a higher tip (never above the owner's cap) and a fee cap
+	// that covers the current base fee, so it can be mined even after a fee spike.
 	plan := planTip(x.ctx, x.feed, x.sig, signals.SevCritical, j.pol.TipCapUSD, j.pol.PriorityExit, p.gasLimit)
-	minTip := new(big.Int).Add(new(big.Int).Div(new(big.Int).Mul(p.tip, big.NewInt(11)), big.NewInt(10)), big.NewInt(1))
-	if plan.capPerGas.Cmp(minTip) < 0 {
+	bf, err := x.baseFee(hdr)
+	if err != nil {
+		return
+	}
+	newTip := new(big.Int).Add(new(big.Int).Div(new(big.Int).Mul(p.tip, big.NewInt(13)), big.NewInt(10)), big.NewInt(1))
+	if newTip.Cmp(plan.capPerGas) > 0 {
+		newTip = new(big.Int).Set(plan.capPerGas) // the cap wins
+	}
+	if newTip.Cmp(p.tip) < 0 {
+		newTip = new(big.Int).Set(p.tip)
+	}
+	maxFee := new(big.Int).Add(new(big.Int).Mul(bf, big.NewInt(2)), newTip)
+	if maxFee.Cmp(p.maxFee) <= 0 && newTip.Cmp(p.tip) == 0 {
+		// Nothing can be raised: the tip is at the owner's cap and the fee cap already covers the base fee.
 		if !p.stuckNote {
 			p.stuckNote = true
 			x.event(j, "exit_submitted", "The exit transaction is waiting: the priority tip is already at your cap, so it cannot be raised further.", head, p.hash.Hex())
 		}
 		return
 	}
-	newTip := new(big.Int).Add(new(big.Int).Div(new(big.Int).Mul(p.tip, big.NewInt(13)), big.NewInt(10)), big.NewInt(1))
-	if newTip.Cmp(plan.capPerGas) > 0 {
-		newTip = new(big.Int).Set(plan.capPerGas)
-	}
-	bf, err := x.baseFee(hdr)
-	if err != nil {
-		return
-	}
-	maxFee := new(big.Int).Add(new(big.Int).Mul(bf, big.NewInt(2)), newTip)
 	if floor := new(big.Int).Add(new(big.Int).Div(new(big.Int).Mul(p.maxFee, big.NewInt(11)), big.NewInt(10)), big.NewInt(1)); maxFee.Cmp(floor) < 0 {
 		maxFee = floor
 	}
@@ -690,8 +707,12 @@ func (x *Executor) maybeReplace(j *job, hdr *types.Header) {
 		MaxPriorityFeePerGasWei: newTip.String(), MaxFeePerGasWei: maxFee.String(), GasLimit: p.gasLimit, TipUSD: tipUSD, Result: "pending"}); err != nil {
 		slog.Error("cannot store replacement transaction", "err", err)
 	}
-	x.event(j, "exit_submitted", fmt.Sprintf("The exit transaction was not mined after %d blocks; replaced it with a higher priority tip ($%.2f, cap $%.2f).", stuckAfterBlocks, tipUSD, j.pol.TipCapUSD), head, signed.Hash().Hex())
-	j.pending = &pendingTx{hash: signed.Hash(), nonce: p.nonce, gasLimit: p.gasLimit, tip: newTip, maxFee: maxFee, sentBlock: head}
+	what := fmt.Sprintf("a higher priority tip ($%.2f, cap $%.2f)", tipUSD, j.pol.TipCapUSD)
+	if newTip.Cmp(p.tip) == 0 {
+		what = fmt.Sprintf("a higher fee limit (the priority tip stays at your cap of $%.2f)", j.pol.TipCapUSD)
+	}
+	x.event(j, "exit_submitted", fmt.Sprintf("The exit transaction was not mined after %d blocks; replaced it with %s.", stuckAfterBlocks, what), head, signed.Hash().Hex())
+	j.pending = &pendingTx{hash: signed.Hash(), nonce: p.nonce, gasLimit: p.gasLimit, tip: newTip, maxFee: maxFee, sentBlock: head, prev: append(p.prev, p.hash)}
 	x.publish(j)
 }
 
@@ -747,4 +768,14 @@ func (x *Executor) RecordExternal(t *config.Target, guard, owner common.Address,
 	if ex, err := x.st.GetExit(x.ctx, e.ID); err == nil {
 		x.hub.Publish("exit", ex)
 	}
+}
+
+func humanSeconds(sec int) string {
+	if sec >= 120 {
+		return fmt.Sprintf("%d minutes", sec/60)
+	}
+	if sec == 60 {
+		return "1 minute"
+	}
+	return fmt.Sprintf("%d seconds", sec)
 }

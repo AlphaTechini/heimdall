@@ -180,10 +180,10 @@ func hashCode(addr, code string) string {
 	return hex.EncodeToString(h[:])
 }
 
-func (a *API) cooldown(actor common.Address, d time.Duration) bool {
+func (a *API) cooldown(actor common.Address, kind string, d time.Duration) bool {
 	a.cooldownMu.Lock()
 	defer a.cooldownMu.Unlock()
-	k := strings.ToLower(actor.Hex())
+	k := kind + ":" + strings.ToLower(actor.Hex())
 	if t, ok := a.emailCooldown[k]; ok && time.Now().Before(t) {
 		return false
 	}
@@ -207,7 +207,7 @@ func (a *API) emailSet(w http.ResponseWriter, r *http.Request, actor common.Addr
 		writeErr(w, 400, "That email address does not look right.")
 		return
 	}
-	if !a.cooldown(actor, 20*time.Second) {
+	if !a.cooldown(actor, "code", 20*time.Second) {
 		writeErr(w, 429, "Please wait a few seconds before asking for another code.")
 		return
 	}
@@ -270,7 +270,7 @@ func (a *API) emailTest(w http.ResponseWriter, r *http.Request, actor common.Add
 		writeErr(w, 400, "Verify your email first, then send a test.")
 		return
 	}
-	if !a.cooldown(actor, 10*time.Second) {
+	if !a.cooldown(actor, "test", 10*time.Second) {
 		writeErr(w, 429, "Please wait a few seconds before sending another test.")
 		return
 	}
