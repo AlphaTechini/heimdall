@@ -1,0 +1,119 @@
+{
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "decimals_",
+          "type": "uint8",
+          "internalType": "uint8"
+        },
+        {
+          "name": "answer_",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "decimals",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latestAnswer",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latestRound",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint80",
+          "internalType": "uint80"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latestRoundData",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint80",
+          "internalType": "uint80"
+        },
+        {
+          "name": "",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "",
+          "type": "uint80",
+          "internalType": "uint80"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "latestTimestamp",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setPrice",
+      "inputs": [
+        {
+          "name": "answer_",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "deployedBytecode": "0x608060405234801561000f575f5ffd5b5060043610610060575f3560e01c8063313ce5671461006457806350d25bcd14610088578063668a0f021461009e5780638205bf6a146100c9578063f7a30806146100d2578063feaf968c146100e7575b5f5ffd5b6001546100719060ff1681565b60405160ff90911681526020015b60405180910390f35b6100905f5481565b60405190815260200161007f565b6003546100b1906001600160501b031681565b6040516001600160501b03909116815260200161007f565b61009060025481565b6100e56100e036600461016b565b610120565b005b6003545f54600254604080516001600160501b03909416808552602085019390935283018190526060830152608082015260a00161007f565b5f8181554260025560038054600192906101449084906001600160501b0316610182565b92506101000a8154816001600160501b0302191690836001600160501b0316021790555050565b5f6020828403121561017b575f5ffd5b5035919050565b6001600160501b0381811683821601908111156101ad57634e487b7160e01b5f52601160045260245ffd5b9291505056fea2646970667358221220b94faf24ba35ccdc1270e67fb232d93fa54b772c4e7aff481664bf3dc8b2750a64736f6c634300081c0033"
+}

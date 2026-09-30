@@ -8,6 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MockERC20 is ERC20 {
     uint8 private immutable _dec;
@@ -29,23 +30,71 @@ contract MockERC20 is ERC20 {
     }
 }
 
-/// @dev ERC-4626 vault whose redeemable liquidity can be limited, like a lending vault whose
-///      assets are lent out.
-contract MockLendingVault is ERC4626 {
-    uint256 public liquidity = type(uint256).max;
+/// @dev ERC-4626 vault that behaves like a lending vault: part of its assets can be lent out
+///      (still counted in totalAssets, but not withdrawable), and redeemable liquidity can also
+///      be capped directly. `writeOff` simulates bad debt (share price drops).
+contract MockLendingVault is ERC4626, Ownable {
+    using SafeERC20 for IERC20;
 
-    constructor(IERC20 asset_) ERC4626(asset_) ERC20("Mock Vault", "mVLT") {}
+    uint256 public liquidity = type(uint256).max;
+    uint256 public lent;
+
+    constructor(IERC20 asset_) ERC4626(asset_) ERC20("Mock Vault", "mVLT") Ownable(msg.sender) {}
 
     function setLiquidity(uint256 l) external {
         liquidity = l;
     }
 
+    /// @dev Simulates borrowers taking idle cash out of the vault.
+    function lend(uint256 amount, address to) external {
+        lent += amount;
+        IERC20(asset()).safeTransfer(to, amount);
+    }
+
+    /// @dev Simulates bad debt: lent assets that will never come back.
+    function writeOff(uint256 amount) external {
+        lent -= amount;
+    }
+
+    function idle() public view returns (uint256) {
+        return IERC20(asset()).balanceOf(address(this));
+    }
+
+    function totalAssets() public view override returns (uint256) {
+        return super.totalAssets() + lent;
+    }
+
     function maxWithdraw(address owner) public view override returns (uint256) {
-        return Math.min(super.maxWithdraw(owner), liquidity);
+        return Math.min(super.maxWithdraw(owner), Math.min(liquidity, idle()));
     }
 
     function maxRedeem(address owner) public view override returns (uint256) {
-        return Math.min(super.maxRedeem(owner), convertToShares(liquidity));
+        return Math.min(super.maxRedeem(owner), convertToShares(Math.min(liquidity, idle())));
+    }
+}
+
+/// @dev Chainlink-style price feed whose answer can be set (latestAnswer / latestRoundData).
+///      Used in unit tests and on plain local anvil. On the demo fork the simulator can place
+///      this runtime code at a real feed address to simulate oracle tampering.
+contract MockPriceFeed {
+    int256 public latestAnswer;
+    uint8 public decimals;
+    uint256 public latestTimestamp;
+    uint80 public latestRound;
+
+    constructor(uint8 decimals_, int256 answer_) {
+        decimals = decimals_;
+        setPrice(answer_);
+    }
+
+    function setPrice(int256 answer_) public {
+        latestAnswer = answer_;
+        latestTimestamp = block.timestamp;
+        latestRound += 1;
+    }
+
+    function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80) {
+        return (latestRound, latestAnswer, latestTimestamp, latestTimestamp, latestRound);
     }
 }
 
