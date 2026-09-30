@@ -1,3 +1,114 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/archivo/wdth.css';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+
+/*
+ * Heimdall design tokens (docs/UI_UX.md section 2).
+ * Contrast (WCAG 2.x, computed): granite-dark on frost 5.0:1, on white 5.6:1;
+ * white on calm-dark 5.3:1; ink on amber 4.7:1; white on ember 5.8:1; white on fjord 6.8:1.
+ * The spec's calm (#3E8E6E) and granite (#6B7C86) fail AA for small text, so they only draw
+ * marks and borders; text and the calm band use the darker variants.
+ */
+@theme {
+	--font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+
+	--color-frost: #eef3f5;
+	--color-ink: #1b2a33;
+	--color-granite: #6b7c86;
+	--color-granite-dark: #5a6a74;
+	--color-fjord: #1f5f8b;
+	--color-fjord-dark: #174a6c;
+	--color-calm: #3e8e6e;
+	--color-calm-dark: #2e7859;
+	--color-amber: #c9831a;
+	--color-amber-dark: #8a5a00;
+	--color-ember: #b8372b;
+	--color-ember-dark: #9e2f24;
+	--color-line: #cfd9de;
+
+	--breakpoint-xs: 30rem;
+}
+
+@layer base {
+	html {
+		background: var(--color-frost);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		-webkit-text-size-adjust: 100%;
+	}
+	body {
+		background: var(--color-frost);
+		min-height: 100dvh;
+		line-height: 1.5;
+		font-variation-settings: normal;
+	}
+	:where(a) {
+		color: var(--color-fjord);
+		text-underline-offset: 3px;
+	}
+	:where(a:hover) {
+		color: var(--color-fjord-dark);
+	}
+	:focus-visible {
+		outline: 3px solid var(--color-fjord);
+		outline-offset: 2px;
+		border-radius: 2px;
+	}
+	/* The forms plugin swaps outlines for rings; keep one consistent visible focus style. */
+	[type='text']:focus,
+	[type='email']:focus,
+	[type='number']:focus,
+	select:focus,
+	[type='radio']:focus,
+	[type='checkbox']:focus {
+		outline: 3px solid var(--color-fjord);
+		outline-offset: 2px;
+		--tw-ring-shadow: 0 0 #0000;
+		border-color: var(--color-fjord);
+	}
+	[type='radio']:checked,
+	[type='checkbox']:checked {
+		color: var(--color-fjord);
+	}
+	dialog {
+		color: var(--color-ink);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.001ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.001ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+}
+
+@utility tabular {
+	font-variant-numeric: tabular-nums;
+}
+
+/* Expanded width, heavy weight: page titles and the horn band's status word. */
+@utility display {
+	font-stretch: 125%;
+	font-weight: 800;
+	letter-spacing: -0.01em;
+	line-height: 1.1;
+}
+
+/* Loading placeholder: static blocks, no shimmer (nothing animates by itself). */
+@utility skeleton {
+	background: #dbe4e8;
+	border-radius: 4px;
+}
+
+@keyframes horn-sweep {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(400%);
+	}
+}
