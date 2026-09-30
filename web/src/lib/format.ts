@@ -61,3 +61,18 @@ export function formatNumber(value: number, maxFraction = 2): string {
 export function plural(n: number, one: string, many: string): string {
 	return `${formatNumber(n, 0)} ${n === 1 ? one : many}`;
 }
+
+/** Signal readings: enough digits to tell 0.999 from 1, without noise on large numbers. */
+export function formatReading(value: number): string {
+	const abs = Math.abs(value);
+	return formatNumber(value, abs >= 100 ? 0 : abs >= 10 ? 1 : 3);
+}
+
+export function formatUsd(value: number): string {
+	return new Intl.NumberFormat('en-US', {
+		style: 'currency',
+		currency: 'USD',
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 4
+	}).format(value);
+}

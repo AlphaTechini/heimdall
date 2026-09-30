@@ -24,7 +24,7 @@
 		if (e.severity === 'critical' || e.kind === 'exit_failed') return 'border-ember';
 		if (e.severity === 'warning') return 'border-amber';
 		if (e.kind === 'exit_complete') return 'border-fjord';
-		return 'border-line';
+		return 'border-transparent';
 	}
 </script>
 

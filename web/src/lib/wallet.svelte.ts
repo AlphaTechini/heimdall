@@ -39,6 +39,8 @@ class WalletStore {
 	chainId = $state<number | null>(null);
 	connecting = $state(false);
 	switching = $state(false);
+	/** True until the first silent check for an already-connected account has finished. */
+	restoring = $state(true);
 	/** Message from the last connect or switch attempt that failed. */
 	notice = $state('');
 
@@ -81,19 +83,23 @@ class WalletStore {
 		this.started = true;
 		const provider = window.ethereum ?? null;
 		this.provider = provider;
-		if (!provider) return;
+		if (!provider) {
+			this.restoring = false;
+			return;
+		}
 
 		provider.on?.('accountsChanged', (accounts) => this.setAccounts(accounts as string[]));
 		provider.on?.('chainChanged', (id) => (this.chainId = Number(id)));
 
-		void this.readChain();
-		if (storageGet(DISCONNECT_KEY) !== '1') {
-			// Silent: eth_accounts never opens a wallet prompt.
-			provider
-				.request({ method: 'eth_accounts' })
-				.then((accounts) => this.setAccounts(accounts as string[]))
-				.catch(() => {});
-		}
+		const accounts =
+			storageGet(DISCONNECT_KEY) === '1'
+				? Promise.resolve()
+				: // Silent: eth_accounts never opens a wallet prompt.
+					provider
+						.request({ method: 'eth_accounts' })
+						.then((a) => this.setAccounts(a as string[]))
+						.catch(() => {});
+		void Promise.allSettled([this.readChain(), accounts]).then(() => (this.restoring = false));
 	}
 
 	private setAccounts(accounts: string[]) {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { txLink } from '$lib/explorer';
-	import { formatAmount, formatDateTime, formatNumber } from '$lib/format';
+	import { formatAmount, formatDateTime, formatNumber, formatUsd } from '$lib/format';
 	import type { ConfigTarget, Exit } from '$lib/types';
 	import ExplorerLink from './ExplorerLink.svelte';
 
@@ -25,6 +25,13 @@
 		pending: 'Waiting to be mined',
 		replaced: 'Replaced by a higher tip'
 	};
+	const blocks = $derived(
+		exit.endBlock === null
+			? `${exit.startBlock}, still running`
+			: exit.endBlock === exit.startBlock
+				? `${exit.startBlock}`
+				: `${exit.startBlock} to ${exit.endBlock}`
+	);
 	const amount = (units: string) =>
 		`${formatAmount(units, target.assetDecimals)} ${target.assetSymbol}`;
 </script>
@@ -44,11 +51,7 @@
 		<dt class="text-granite-dark">Returned to your wallet</dt>
 		<dd class="font-semibold">{amount(exit.totalOut)}</dd>
 		<dt class="text-granite-dark">Blocks</dt>
-		<dd>
-			{exit.startBlock}{#if exit.endBlock !== null && exit.endBlock !== exit.startBlock}
-				to {exit.endBlock}{:else if exit.endBlock === null}
-				, still running{/if}
-		</dd>
+		<dd>{blocks}</dd>
 		<dt class="text-granite-dark">Decision to broadcast</dt>
 		<dd>
 			{exit.decisionToBroadcastMs === null
@@ -56,18 +59,18 @@
 				: `${formatNumber(exit.decisionToBroadcastMs, 0)} ms`}
 		</dd>
 		<dt class="text-granite-dark">Tip limit</dt>
-		<dd>${formatNumber(exit.tipCapUsd, 2)}</dd>
+		<dd>{formatUsd(exit.tipCapUsd)}</dd>
 	</dl>
 
 	{#if exit.txs.length > 0}
 		<h4 class="mt-4 text-sm font-semibold">Transactions</h4>
 		<ul class="mt-1 divide-y divide-line text-sm">
-			{#each exit.txs as tx (tx.hash)}
+			{#each exit.txs as tx, i (`${i}-${tx.hash}`)}
 				<li class="flex flex-wrap items-baseline gap-x-5 gap-y-0.5 py-2 tabular">
 					<span>Block {tx.block}</span>
 					<span>{amount(tx.amountOut)} out</span>
 					<span>{amount(tx.remaining)} left</span>
-					<span>Tip ${formatNumber(tx.tipUsd, 4)}</span>
+					<span>Tip {formatUsd(tx.tipUsd)}</span>
 					<span class="text-granite-dark">{RESULT[tx.result] ?? tx.result}</span>
 					<ExplorerLink link={txLink(tx.hash)}>View transaction</ExplorerLink>
 				</li>

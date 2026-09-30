@@ -135,6 +135,10 @@
 	// ---- actions ----
 	const actions = createGuardActions(() => target as ConfigTarget);
 	const guarded = $derived(position?.status === 'guarded' || position?.status === 'exiting');
+	// Keep the outcome of an action on screen even when it changes the position (an exit empties the Guard).
+	const showFeedback = $derived(
+		[actions.exit, actions.pause, actions.toggle, actions.withdraw].some((a) => a.state !== 'idle')
+	);
 	const nothingHeld = $derived(position ? isZero(position.guardedPositionTokens) : true);
 
 	// ---- policy editing ----
@@ -290,54 +294,57 @@
 		{/if}
 	</section>
 
-	{#if guarded}
+	{#if guarded || showFeedback}
 		<section class="mt-10 max-w-3xl" aria-labelledby="actions-title">
 			<h2 id="actions-title" class="text-2xl display">Actions</h2>
-			<p class="mt-2 text-granite-dark">
-				These are wallet transactions. Only you can send them, and each one takes effect in the same
-				block.
-			</p>
-			{#if wallet.issue}
-				<div class="mt-3"><WalletNotice /></div>
-			{/if}
-			<div class="mt-4 flex flex-wrap gap-3">
-				<button
-					type="button"
-					class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
-					disabled={actions.busy || !!wallet.issue || nothingHeld}
-					onclick={() => actions.exit.run()}
-				>
-					Exit now
-				</button>
-				<button
-					type="button"
-					class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
-					disabled={actions.busy || !!wallet.issue}
-					onclick={() => actions.pause.run()}
-				>
-					{positions.paused ? 'Resume' : 'Pause Heimdall'}
-				</button>
-				<button
-					type="button"
-					class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
-					disabled={actions.busy || !!wallet.issue}
-					onclick={() => actions.toggle.run()}
-				>
-					{positions.keeperEnabled ? 'Turn off protection' : 'Turn on protection'}
-				</button>
-				<button
-					type="button"
-					class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
-					disabled={actions.busy || !!wallet.issue || nothingHeld}
-					onclick={() => actions.withdraw.run()}
-				>
-					Withdraw to my wallet
-				</button>
-			</div>
-			{#if nothingHeld}
-				<p class="mt-3 text-sm text-granite-dark">
-					Exit now and Withdraw are unavailable because your Guard holds nothing for this position.
+			{#if guarded}
+				<p class="mt-2 text-granite-dark">
+					These are wallet transactions. Only you can send them, and each one takes effect in the
+					same block.
 				</p>
+				{#if wallet.issue}
+					<div class="mt-3"><WalletNotice /></div>
+				{/if}
+				<div class="mt-4 flex flex-wrap gap-3">
+					<button
+						type="button"
+						class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
+						disabled={actions.busy || !!wallet.issue || nothingHeld}
+						onclick={() => actions.exit.run()}
+					>
+						Exit now
+					</button>
+					<button
+						type="button"
+						class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+						disabled={actions.busy || !!wallet.issue}
+						onclick={() => actions.pause.run()}
+					>
+						{positions.paused ? 'Resume' : 'Pause Heimdall'}
+					</button>
+					<button
+						type="button"
+						class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+						disabled={actions.busy || !!wallet.issue}
+						onclick={() => actions.toggle.run()}
+					>
+						{positions.keeperEnabled ? 'Turn off protection' : 'Turn on protection'}
+					</button>
+					<button
+						type="button"
+						class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+						disabled={actions.busy || !!wallet.issue || nothingHeld}
+						onclick={() => actions.withdraw.run()}
+					>
+						Withdraw to my wallet
+					</button>
+				</div>
+				{#if nothingHeld}
+					<p class="mt-3 text-sm text-granite-dark">
+						Exit now and Withdraw are unavailable because your Guard holds nothing for this
+						position.
+					</p>
+				{/if}
 			{/if}
 			<div class="mt-3 space-y-2">
 				<ActionStatus action={actions.exit} />
@@ -345,10 +352,12 @@
 				<ActionStatus action={actions.toggle} />
 				<ActionStatus action={actions.withdraw} />
 			</div>
-			<p class="mt-3 max-w-prose text-sm text-granite-dark">
-				Exit now redeems as much as the vault can pay today and sends it to your wallet. Pause stops
-				Heimdall from exiting for you; your own actions still work.
-			</p>
+			{#if guarded}
+				<p class="mt-3 max-w-prose text-sm text-granite-dark">
+					Exit now redeems as much as the vault can pay today and sends it to your wallet. Pause
+					stops Heimdall from exiting for you; your own actions still work.
+				</p>
+			{/if}
 		</section>
 	{/if}
 

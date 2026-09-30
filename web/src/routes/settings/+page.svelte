@@ -118,6 +118,7 @@
 			throw new Error('That code did not match. Check the digits or send a new code.');
 		codeSent = false;
 		code = '';
+		sendCode.reset();
 		await loadSettings();
 		ctx.success('Email verified. Alerts will go to this address.');
 	});
