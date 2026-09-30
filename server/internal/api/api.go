@@ -67,6 +67,7 @@ func (a *API) Handler() http.Handler {
 	m.HandleFunc("GET /signals/{targetId}/history", a.signalsHistory)
 	m.HandleFunc("GET /guards/{guard}", a.guard)
 	m.HandleFunc("GET /activity", a.activity)
+	m.HandleFunc("GET /exits", a.exits)
 	m.HandleFunc("GET /exits/{id}", a.exit)
 	m.HandleFunc("GET /tx/{hash}", a.tx)
 	m.HandleFunc("GET /backtests", a.backtests)
