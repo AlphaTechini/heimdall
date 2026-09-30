@@ -1,0 +1,80 @@
+{
+  "$comment": "Supported targets for Arbitrum One (and the local Arbitrum One fork). Every third-party address has a `source`. Entries with \"verified\": false MUST be confirmed on Arbiscan by the builder before use (see README Status). Do not add addresses from memory.",
+  "chainId": 42161,
+  "addressBookSource": "bgd-labs/aave-address-book @ 17567521ae51088c85e01a6d8240f18b383bac2f (src/AaveV3Arbitrum.sol, src/ChainlinkArbitrum.sol)",
+  "aave": {
+    "pool": { "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD", "source": "aave-address-book AaveV3Arbitrum.POOL", "verified": true },
+    "poolAddressesProvider": { "address": "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb", "source": "aave-address-book AaveV3Arbitrum.POOL_ADDRESSES_PROVIDER", "verified": true },
+    "poolConfigurator": { "address": "0x8145eddDf43f50276641b55bd3AD95944510021E", "source": "aave-address-book AaveV3Arbitrum.POOL_CONFIGURATOR", "verified": true },
+    "oracle": { "address": "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7", "source": "aave-address-book AaveV3Arbitrum.ORACLE", "verified": true },
+    "aclManager": { "address": "0xa72636CbcAa8F5FF95B2cc47F3CDEe83F3294a0B", "source": "aave-address-book AaveV3Arbitrum.ACL_MANAGER", "verified": true },
+    "aclAdmin": { "address": "0xFF1137243698CaA18EE364Cc966CF0e02A4e6327", "source": "aave-address-book AaveV3Arbitrum.ACL_ADMIN (= GovernanceV3Arbitrum.EXECUTOR_LVL_1)", "verified": true }
+  },
+  "tokens": {
+    "USDC": { "address": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "decimals": 6, "source": "aave-address-book AaveV3Arbitrum.USDCn_UNDERLYING (native USDC)", "verified": true },
+    "USDT": { "address": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", "decimals": 6, "source": "aave-address-book AaveV3Arbitrum.USDT_UNDERLYING", "verified": true },
+    "WETH": { "address": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "decimals": 18, "source": "aave-address-book AaveV3Arbitrum.WETH_UNDERLYING", "verified": true }
+  },
+  "feeds": {
+    "USDC_USD": { "address": "0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3", "kind": "chainlink", "source": "aave-address-book ChainlinkArbitrum.USDC__USD", "verified": true },
+    "USDT_USD": { "address": "0x3f3f5dF88dC9F13eac63DF89EC16ef6e7E25DdE7", "kind": "chainlink", "source": "aave-address-book ChainlinkArbitrum.USDT__USD", "verified": true },
+    "ETH_USD": { "address": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612", "kind": "chainlink", "source": "aave-address-book ChainlinkArbitrum.ETH__USD", "verified": true }
+  },
+  "targets": [
+    {
+      "id": "morpho-usdc",
+      "label": "Morpho vault (USDC)",
+      "protocol": "Morpho",
+      "type": "erc4626",
+      "address": "0x7e97fa6893871a2751b5fe961978dccb2c201e65",
+      "source": "Gauntlet USDC Core (MetaMorpho) on Arbitrum One, listed by tradingstrategy.ai/trading-view/arbitrum/vaults/42161-0x7e97fa6893871a2751b5fe961978dccb2c201e65. NOT yet confirmed on Arbiscan or app.morpho.org: builder must confirm (the fork test also asserts asset() == USDC).",
+      "verified": false,
+      "asset": "USDC",
+      "liquidityModel": "metamorpho",
+      "priceOracle": null,
+      "referenceFeed": "USDC_USD",
+      "collateralFeeds": [],
+      "configWatch": [
+        { "address": "0x7e97fa6893871a2751b5fe961978dccb2c201e65", "label": "vault" }
+      ]
+    },
+    {
+      "id": "aave-usdc",
+      "label": "Aave V3 (USDC)",
+      "protocol": "Aave V3",
+      "type": "aave_v3",
+      "address": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      "aToken": { "address": "0x724dc807b04555b71ed48a6896b6F41593b8C637", "source": "aave-address-book AaveV3Arbitrum.USDCn_A_TOKEN", "verified": true },
+      "source": "aave-address-book AaveV3Arbitrum.USDCn_UNDERLYING",
+      "verified": true,
+      "asset": "USDC",
+      "liquidityModel": "aave",
+      "priceOracle": { "kind": "aaveOracle", "asset": "USDC" },
+      "referenceFeed": "USDC_USD",
+      "collateralFeeds": [
+        { "symbol": "USDT", "kind": "aaveOracle", "asset": "USDT" }
+      ],
+      "configWatch": [
+        { "address": "0x8145eddDf43f50276641b55bd3AD95944510021E", "label": "Aave pool configurator" },
+        { "address": "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7", "label": "Aave oracle" },
+        { "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD", "label": "Aave pool" }
+      ]
+    }
+  ],
+  "thresholds": {
+    "s1": { "warningPct": 5, "warningWindowSec": 60, "criticalPct": 15, "criticalWindowSec": 60, "criticalSlowPct": 25, "criticalSlowWindowSec": 600, "minUsd": 10000 },
+    "s2": { "criticalDropPct": 0.1 },
+    "s3": { "warningPct": 2, "criticalPct": 5 },
+    "s4": { "warningPrice": 0.985, "criticalPrice": 0.95 },
+    "s5": { "warningLiquidityMultiple": 2, "warningUtilizationPct": 95 },
+    "s6": { "criticalComboWindowSec": 600 },
+    "combo": { "twoWarningsWindowSec": 300 },
+    "debounceChecks": 2
+  },
+  "executor": {
+    "severityBudgetUsd": { "warning": 0.25, "critical": 5 },
+    "retryTimeoutSec": 1800,
+    "defaultTipCapUsd": 1,
+    "maxTipCapUsd": 50
+  }
+}
