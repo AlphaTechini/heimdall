@@ -25,8 +25,12 @@ import (
 type Params struct {
 	Incident string // id, becomes the file name and the /backtests/{id} path
 	Title    string
-	RPC      string // archive RPC URL
-	Target   common.Address
+	RPC      string           // archive RPC URL
+	Mode     string           // "erc4626" (default) or "balance"
+	Target   common.Address   // erc4626: the vault
+	Holder   common.Address   // balance: the contract whose token balances are summed
+	Tokens   []common.Address // balance: ERC-20 tokens held by Holder
+	Source   string           // where the addresses and block range came from (written into note)
 	From, To uint64
 	Step     uint64
 	Stable   bool // the vault asset is a $1 stablecoin, so the USD floor applies
@@ -53,6 +57,8 @@ type Result struct {
 	Title                             string                        `json:"title"`
 	Incident                          string                        `json:"incident"`
 	ChainID                           uint64                        `json:"chainId"`
+	Mode                              string                        `json:"mode"`
+	Tokens                            []string                      `json:"tokens"`
 	Target                            string                        `json:"target"`
 	Asset                             string                        `json:"asset"`
 	AssetDecimals                     int                           `json:"assetDecimals"`
@@ -95,30 +101,102 @@ func Run(ctx context.Context, p Params, sig *config.Signals) (*Result, error) {
 	if p.Step == 0 {
 		p.Step = 1
 	}
+	if p.Mode == "" {
+		p.Mode = "erc4626"
+	}
+	if p.Mode != "erc4626" && p.Mode != "balance" {
+		return nil, fmt.Errorf("--mode must be erc4626 or balance")
+	}
 	ch, err := chain.Dial(ctx, p.RPC, "")
 	if err != nil {
 		return nil, err
 	}
 	defer ch.Eth.Close()
-	vault := p.Target
 	at := new(big.Int).SetUint64(p.From)
-	asset, err := ch.Addr(ctx, &chain.ERC4626ABI, vault, at, "asset")
-	if err != nil {
-		return nil, fmt.Errorf("the target does not look like an ERC-4626 vault at block %d (is the RPC an archive node?): %w", p.From, err)
+	var read func(bn *big.Int) (*big.Int, *big.Int, error) // returns totalAssets (or summed balance) and the share price (nil when unavailable)
+	var asset common.Address
+	var dec int
+	var target common.Address
+	var tokens []string
+	note := ""
+	switch p.Mode {
+	case "erc4626":
+		vault := p.Target
+		target = vault
+		asset, err = ch.Addr(ctx, &chain.ERC4626ABI, vault, at, "asset")
+		if err != nil {
+			return nil, fmt.Errorf("the target does not look like an ERC-4626 vault at block %d (is the RPC an archive node?): %w", p.From, err)
+		}
+		d, err := ch.Uint(ctx, &chain.ERC20ABI, asset, at, "decimals")
+		if err != nil {
+			return nil, err
+		}
+		dec = int(d.Int64())
+		vdec, err := ch.Uint(ctx, &chain.ERC20ABI, vault, at, "decimals")
+		if err != nil {
+			return nil, err
+		}
+		one := chain.Pow10(int(vdec.Int64()))
+		tokens = []string{asset.Hex()}
+		read = func(bn *big.Int) (*big.Int, *big.Int, error) {
+			ta, err := retry(func() (*big.Int, error) { return ch.Uint(ctx, &chain.ERC4626ABI, vault, bn, "totalAssets") })
+			if err != nil {
+				return nil, nil, fmt.Errorf("cannot read totalAssets: %w", err)
+			}
+			sp, err := retry(func() (*big.Int, error) { return ch.Uint(ctx, &chain.ERC4626ABI, vault, bn, "convertToAssets", one) })
+			if err != nil {
+				return nil, nil, fmt.Errorf("cannot read the share price: %w", err)
+			}
+			return ta, sp, nil
+		}
+		note = "Signals S1 (outflow) and S2 (share price) replayed with the production signal code over real historical state. S3-S6 need feeds and logs that this replay does not read."
+	case "balance":
+		if len(p.Tokens) == 0 {
+			return nil, fmt.Errorf("--token needs at least one ERC-20 address in --mode balance")
+		}
+		target = p.Holder
+		asset = p.Tokens[0]
+		decs := make([]int, len(p.Tokens))
+		for i, t := range p.Tokens {
+			d, err := ch.Uint(ctx, &chain.ERC20ABI, t, at, "decimals")
+			if err != nil {
+				return nil, fmt.Errorf("token %s does not look like an ERC-20 at block %d: %w", t.Hex(), p.From, err)
+			}
+			decs[i] = int(d.Int64())
+			tokens = append(tokens, t.Hex())
+		}
+		dec = decs[0]
+		read = func(bn *big.Int) (*big.Int, *big.Int, error) {
+			sum := new(big.Int)
+			for i, t := range p.Tokens {
+				t := t
+				v, err := retry(func() (*big.Int, error) { return ch.BalanceOf(ctx, t, p.Holder, bn) })
+				if err != nil {
+					return nil, nil, fmt.Errorf("cannot read balanceOf(%s) for token %s: %w", p.Holder.Hex(), t.Hex(), err)
+				}
+				// bring every token to the first token's decimals before summing
+				if decs[i] > dec {
+					v = new(big.Int).Div(v, chain.Pow10(decs[i]-dec))
+				} else if decs[i] < dec {
+					v = new(big.Int).Mul(v, chain.Pow10(dec-decs[i]))
+				}
+				sum.Add(sum, v)
+			}
+			return sum, nil, nil
+		}
+		unit := "in token units of the first listed token (no prices are applied; different tokens are added 1:1)"
+		if p.Stable {
+			unit = "treating every listed token as $1"
+		}
+		note = "Balance mode: S1 (outflow) is computed from the summed balanceOf(holder) of the listed tokens " + unit + ", with the production signal code. S2 (share price) is unavailable in this mode. S3-S6 are not replayed."
 	}
-	dec, err := ch.Uint(ctx, &chain.ERC20ABI, asset, at, "decimals")
-	if err != nil {
-		return nil, err
+	if p.Source != "" {
+		note += " Source: " + p.Source
 	}
-	vdec, err := ch.Uint(ctx, &chain.ERC20ABI, vault, at, "decimals")
-	if err != nil {
-		return nil, err
-	}
-	eng := signals.NewEngine(sig, signals.Meta{AssetDecimals: int(dec.Int64()), AssetIsStable: p.Stable})
-	res := &Result{ID: p.Incident, Title: p.Title, Incident: p.Incident, ChainID: ch.ChainID.Uint64(), Target: vault.Hex(), Asset: asset.Hex(),
-		AssetDecimals: int(dec.Int64()), FromBlock: p.From, ToBlock: p.To, Step: p.Step, GeneratedAt: time.Now().UTC(),
-		Thresholds: signals.Thresholds(sig), Points: []Point{},
-		Note: "Signals S1 (outflow) and S2 (share price) replayed with the production signal code over real historical state. S3-S6 need feeds and logs that this replay does not read."}
+	eng := signals.NewEngine(sig, signals.Meta{AssetDecimals: dec, AssetIsStable: p.Stable})
+	res := &Result{ID: p.Incident, Title: p.Title, Incident: p.Incident, ChainID: ch.ChainID.Uint64(), Mode: p.Mode, Tokens: tokens, Target: target.Hex(), Asset: asset.Hex(),
+		AssetDecimals: dec, FromBlock: p.From, ToBlock: p.To, Step: p.Step, GeneratedAt: time.Now().UTC(),
+		Thresholds: signals.Thresholds(sig), Points: []Point{}, Note: note}
 	if u, err := url.Parse(p.RPC); err == nil {
 		res.RPCHost = u.Host
 	}
@@ -127,7 +205,6 @@ func Run(ctx context.Context, p Params, sig *config.Signals) (*Result, error) {
 	}
 	peak := new(big.Int)
 	var atCrit *big.Int
-	one := chain.Pow10(int(vdec.Int64()))
 	for b := p.From; b <= p.To; b += p.Step {
 		bn := new(big.Int).SetUint64(b)
 		hdr, err := retry(func() (*struct{ t uint64 }, error) {
@@ -140,19 +217,15 @@ func Run(ctx context.Context, p Params, sig *config.Signals) (*Result, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot read block %d: %w", b, err)
 		}
-		ta, err := retry(func() (*big.Int, error) { return ch.Uint(ctx, &chain.ERC4626ABI, vault, bn, "totalAssets") })
+		ta, sp, err := read(bn)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read totalAssets at block %d: %w", b, err)
-		}
-		sp, err := retry(func() (*big.Int, error) { return ch.Uint(ctx, &chain.ERC4626ABI, vault, bn, "convertToAssets", one) })
-		if err != nil {
-			return nil, fmt.Errorf("cannot read the share price at block %d: %w", b, err)
+			return nil, fmt.Errorf("block %d: %w", b, err)
 		}
 		r := eng.Step(signals.Obs{Block: b, Time: time.Unix(int64(hdr.t), 0).UTC(), TotalAssets: ta, SharePrice: sp})
 		if ta.Cmp(peak) > 0 {
 			peak = new(big.Int).Set(ta)
 		}
-		pt := Point{Block: b, Time: time.Unix(int64(hdr.t), 0).UTC(), TotalAssets: ta.String(), SharePrice: sp.String(),
+		pt := Point{Block: b, Time: time.Unix(int64(hdr.t), 0).UTC(), TotalAssets: ta.String(), SharePrice: spStr(sp),
 			OutflowPct: r.Signals[0].Value, ShareDropPct: r.Signals[1].Value, Severity: r.Severity, Levels: map[string]string{}}
 		for _, s := range r.Signals {
 			pt.Levels[s.ID] = s.Level
@@ -191,4 +264,11 @@ func Write(res *Result, out string) error {
 		return err
 	}
 	return os.WriteFile(out, append(raw, '\n'), 0o644)
+}
+
+func spStr(v *big.Int) string {
+	if v == nil {
+		return ""
+	}
+	return v.String()
 }

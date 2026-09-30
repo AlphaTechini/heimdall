@@ -242,7 +242,11 @@ func runBacktest(args []string) error {
 	incident := fs.String("incident", "", "incident id, for example tmx-2026-01 (becomes the file name)")
 	title := fs.String("title", "", "title shown on the Backtest page")
 	rpc := fs.String("rpc", "", "archive RPC URL for the chain the incident happened on")
-	target := fs.String("target", "", "the ERC-4626 vault to replay (address)")
+	mode := fs.String("mode", "erc4626", "erc4626 (replay a vault's totalAssets and share price) or balance (sum balanceOf(holder) of --token)")
+	target := fs.String("target", "", "erc4626 mode: the vault to replay (address)")
+	holder := fs.String("holder", "", "balance mode: the pool/vault contract whose token balances are summed (address)")
+	tokenList := fs.String("token", "", "balance mode: comma-separated ERC-20 addresses held by --holder")
+	source := fs.String("source", "", "where the addresses and block range came from (write-up and Arbiscan URLs); written into the file's note")
 	from := fs.Uint64("from", 0, "first block")
 	to := fs.Uint64("to", 0, "last block")
 	step := fs.Uint64("step", 1, "replay every Nth block")
@@ -259,8 +263,27 @@ func runBacktest(args []string) error {
 	if *rpc == "" {
 		missing = append(missing, "--rpc")
 	}
-	if !common.IsHexAddress(*target) {
-		missing = append(missing, "--target (a vault address)")
+	var tokens []common.Address
+	switch *mode {
+	case "erc4626":
+		if !common.IsHexAddress(*target) {
+			missing = append(missing, "--target (a vault address)")
+		}
+	case "balance":
+		if !common.IsHexAddress(*holder) {
+			missing = append(missing, "--holder (a contract address)")
+		}
+		for _, t := range strings.Split(*tokenList, ",") {
+			t = strings.TrimSpace(t)
+			if !common.IsHexAddress(t) {
+				missing = append(missing, "--token (comma-separated ERC-20 addresses)")
+				tokens = nil
+				break
+			}
+			tokens = append(tokens, common.HexToAddress(t))
+		}
+	default:
+		missing = append(missing, "--mode (erc4626 or balance)")
 	}
 	if *to == 0 || *to < *from {
 		missing = append(missing, "--from and --to (block numbers, --to >= --from)")
@@ -284,7 +307,7 @@ func runBacktest(args []string) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	res, err := backtest.Run(ctx, backtest.Params{Incident: *incident, Title: *title, RPC: *rpc, Target: common.HexToAddress(*target),
+	res, err := backtest.Run(ctx, backtest.Params{Incident: *incident, Title: *title, RPC: *rpc, Mode: *mode, Target: common.HexToAddress(*target), Holder: common.HexToAddress(*holder), Tokens: tokens, Source: *source,
 		From: *from, To: *to, Step: *step, Stable: *stable, Out: *out}, sig)
 	if err != nil {
 		return err
