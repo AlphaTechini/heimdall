@@ -43,6 +43,10 @@ contract LocalDev is Script {
         usdc.mint(ada, 15_000e6);
         usdc.mint(ben, 10_000e6);
         usdc.mint(crowd, 200_000e6);
+        // Other Aave suppliers, so the mock reserve has cash beyond Ada's own position.
+        usdc.mint(vm.addr(DEPLOYER_PK), 100_000e6);
+        usdc.approve(address(pool), type(uint256).max);
+        pool.supply(address(usdc), 100_000e6, vm.addr(DEPLOYER_PK), 0);
         vm.stopBroadcast();
 
         vm.startBroadcast(ADA_PK);

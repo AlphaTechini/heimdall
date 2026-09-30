@@ -89,4 +89,46 @@ Demo video: not recorded yet.
 
 ## Status
 
-Interim (2026-09-30, build in progress): contracts, server and web are built and verified on a plain local anvil with test mocks (`forge test`: 11 passed, 2 fork tests skipped without RPC; `go build`/`go vet` clean; `pnpm check`/`lint`/`build` clean; fast-drain demo loop returns 10,000 USDC to Ada via a partial then complete exit). The end-to-end click-through and the final builder checklist are being finished; see the next commit.
+Last updated 2026-09-30 by the cloud build session. The cloud sandbox cannot reach Arbitrum RPC endpoints, so everything below was verified on a **plain local anvil with test mocks** (`scripts/local-dev.sh`). The real demo path (Arbitrum One fork with real Morpho/Aave contracts), deployments and real alerts must be run by the builder (numbered list at the end).
+
+### Done, with evidence (fresh runs in the cloud)
+
+| Area | Command | Result |
+|---|---|---|
+| Contracts | `cd contracts && forge build && forge test` | compiles; 11 passed, 0 failed, 2 skipped (fork tests skip cleanly without `ARBITRUM_ONE_RPC_URL`) |
+| Server | `cd server && go build ./... && go vet ./... && gofmt -l .` | clean, no output |
+| Server run | `scripts/local-dev.sh --fresh`, `heimdalld` (DEMO_MODE=true) + Postgres 16 | `/healthz`, `/config`, `/positions`, `/signals`, `/exits`, `/backtests` answer |
+| Demo loop (API) | Ada creates a Guard, deposits 10,000 shares; `POST /sim/scenarios/fast-drain/run` | Watch → Warning (5.5%/60s) → Critical (16.5%/60s) → exit submitted (priority tip) → partial exit 6,200 USDC → retry → remaining 3,800 USDC; Ada's wallet 0 → 10,000 USDC; decision to broadcast 3 ms |
+| Tip cap (W6) | `/exits/{id}` after fast drain | tip budget is per exit: tx1 exposure $2.00 max ($1.39 paid), tx2 limited to the remaining $0.61 |
+| Other scenarios | oracle tampering, collateral depeg, reset | S3 and S4 go Warning → Critical and trigger exits; `/sim/reset` restores chain and DB; `/sim/*` returns 403 with `DEMO_MODE=false` |
+| Web | `cd web && pnpm check && pnpm lint && pnpm build` | 0 errors, 0 warnings; lint exit 0; build exit 0 |
+| UI click-through | `python3 e2e/clickthrough.py` against the real server + anvil (stub wallet forwarding to anvil) | 48 passed, 0 failed, 240 controls swept, 0 console errors, exit 0; routes at 1440 and 375 px with no horizontal overflow; band sequence Calm → Warning → Critical → Exiting → Home safe; screenshots reviewed |
+| Docker | `docker compose config` | valid; images not built (no Docker daemon in the sandbox) |
+
+Also exercised by the agents that built each part (see commit messages): `exit_half` at Warning, `ask_first`, keeper turned off, Pause, stop endpoint, retry timeout, stuck-transaction replacement, Aave partial exit on the mock pool, SIWE negatives (replayed nonce, wrong signer, non-owner), Telegram and Resend against local stubs (failures retried 3 times, never delay an exit), and the backtest command in both modes against the local anvil.
+
+### Not done or not verifiable in the cloud
+
+- **Arbitrum One fork demo** (`scripts/demo-fork.sh`, `heimdalld demo-seed`, fast drain against a real Morpho vault): written, not run. The partial-then-complete exit is tuned on the mock vault; on a real vault the partial exit only shows if the configured `sim.drainers` hold enough shares to pull available liquidity below Ada's position. Tune the drainer list if the exit completes in one go.
+- **Fork tests** (`contracts/test/ForkExits.t.sol`): written, skipped here.
+- **Deployments** on Arbitrum Sepolia / One: script ready (`scripts/deploy.sh`), not run.
+- **Real Telegram and Resend delivery**: code verified against local stubs only.
+- **Backtest (TMX)**: the replay command exists (`heimdalld backtest`, docs/api.md §8) but no data was fetched (needs an archive RPC). Per specs N7 the Backtest page stays hidden until a real data file exists.
+- `docker build` of `server/` and `web/`.
+- `keeperExitBatch` exists on-chain but the executor sends one transaction per Guard.
+- No chain-reorg handling in the watcher (fine on anvil; production would need it).
+- Assumptions made without the builder: pooled design not built (per-user Guards, specs X3); exit asset is the underlying (no USDG route verified); the fork runs with chain id 31337 so the simulator guard (DEMO_MODE + chain 31337 + anvil client) can tell it apart from Arbitrum One; the deadline timezone is still unconfirmed.
+
+### What the builder must do locally
+
+1. **Tools:** install Foundry, Go 1.26, Node 22 + pnpm, Postgres 16; `git submodule update --init --recursive`.
+2. **Fill the placeholders** in `config/targets.arbitrum-one.json`, each with an address and a `source` URL (never from memory, specs N8): a Morpho USDC vault on Arbitrum One (`targets[morpho-usdc].address`, from app.morpho.org + Arbiscan), `ethUsdFeed` (Chainlink ETH/USD from docs.chain.link), the vault's `signals` feeds (market feed, reference feed, collateral feeds), `sim.drainers` (largest share holders of that vault, Arbiscan holders tab) and `demo.usdcSource` (a large USDC holder). `heimdalld demo-seed` prints whatever is still missing.
+3. **Fork tests:** `cd contracts && ARBITRUM_ONE_RPC_URL=... FORK_ERC4626_VAULT=<the Morpho vault> forge test --match-contract ForkExits -vv` (proof that real exits work, specs T2).
+4. **Demo fork:** `export ARBITRUM_ONE_RPC_URL=...; bash scripts/demo-fork.sh`, then start `heimdalld` with the env it prints plus `AUTH_SECRET=$(openssl rand -hex 32)`, then `cd web && pnpm install && pnpm dev`. Add network `http://127.0.0.1:8545` / chain id 31337 to your wallet and import anvil accounts #1 (Ada) and #2 (Ben). Run Protect → Simulator → Fast drain; if the exit does not go partial first, add more `sim.drainers`. Optionally run `API_URL=http://127.0.0.1:8080 python3 e2e/clickthrough.py` against it.
+5. **Telegram bot:** create it with @BotFather, set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_BOT_USERNAME`; link it in Settings and press Send test alert.
+6. **Resend:** create an API key and set `RESEND_API_KEY` and `EMAIL_FROM` (a verified domain, e.g. a subdomain of cyberpunkinc.xyz; without one Resend only delivers to the account's own address). Verify your email in Settings and press Send test email.
+7. **Deploy and verify on Arbitrum Sepolia:** generate a keeper key, then `PRIVATE_KEY=... KEEPER_ADDRESS=<keeper address> ARBISCAN_API_KEY=... ARBITRUM_SEPOLIA_RPC_URL=... bash scripts/deploy.sh sepolia`. Put the factory and implementation addresses in the Deployments table above. Optional (Q8): `bash scripts/deploy.sh one` (label it experimental and unaudited).
+8. **Run against Sepolia (optional):** `heimdalld` with `TARGETS_FILE=../config/targets.arbitrum-sepolia.json`, `FACTORY_ADDRESS=...`, `DEMO_MODE=false`, the keeper key, `START_BLOCK=<deployment block>`.
+9. **Backtest (optional, specs D5):** find the TMX pool address, tokens and block range from the Rekt and SlowMist write-ups and Arbiscan, then run `heimdalld backtest --mode balance ...` with an archive RPC (exact command in docs/api.md §8). If the data cannot be fetched, skip it: the page stays hidden.
+10. **Confirm the deadline timezone** on HackQuest (Oct 4, 2026, 15:59).
+11. **Record the video** (under 4 minutes, following docs/user_flow.md): show the "can only send back to you" guarantee, a working Withdraw / Turn off, the priority tip on the exit transaction, the partial then complete exit, Ada vs Ben, and Arbiscan links to the verified contracts. Add the link to this README, then submit on HackQuest.
