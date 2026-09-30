@@ -34,19 +34,29 @@ func (a *API) healthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"ok": true, "chainId": a.Chain.ChainID.Uint64(), "block": n})
 }
 
+// onFork reports whether the live chain is a local chain that differs from the chain the targets
+// file describes (the demo fork: chain id 31337 running with the Arbitrum One targets file).
+func (a *API) onFork() bool {
+	return a.Chain.ChainID.Uint64() != a.Targets.ChainID
+}
+
 func (a *API) chainName() string {
-	switch a.Chain.ChainID.Uint64() {
-	case 42161:
-		return "Arbitrum One"
-	case 421614:
-		return "Arbitrum Sepolia"
-	case 31337:
+	if a.Chain.ChainID.Uint64() == 31337 {
+		if a.onFork() {
+			return "Local Arbitrum One fork"
+		}
 		for _, t := range a.Targets.Targets {
 			if t.Sim.MockVault {
 				return "Local development chain (test mocks)"
 			}
 		}
 		return "Local Arbitrum One fork"
+	}
+	switch a.Chain.ChainID.Uint64() {
+	case 42161:
+		return "Arbitrum One"
+	case 421614:
+		return "Arbitrum Sepolia"
 	}
 	return fmt.Sprintf("Chain %s", a.Chain.ChainID)
 }
@@ -78,7 +88,7 @@ func (a *API) getConfig(w http.ResponseWriter, r *http.Request) {
 		bot = a.Telegram.Bot
 	}
 	var explorer any
-	if a.Targets.Explorer != nil {
+	if a.Targets.Explorer != nil && !a.onFork() { // fork transactions do not exist on Arbiscan
 		explorer = a.Targets.Explorer
 	}
 	writeJSON(w, 200, map[string]any{
@@ -224,6 +234,32 @@ func (a *API) exit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, e)
+}
+
+func (a *API) exits(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	guard := ""
+	if s := q.Get("guard"); s != "" {
+		ga, ok := parseAddr(s)
+		if !ok {
+			writeErr(w, 400, "That is not a valid Guard address.")
+			return
+		}
+		guard = ga.Hex()
+	}
+	target := q.Get("targetId")
+	if target != "" && a.Targets.Target(target) == nil {
+		writeErr(w, 404, fmt.Sprintf("Unknown position %q.", target))
+		return
+	}
+	ctx, cancel := a.ctx(r)
+	defer cancel()
+	list, err := a.Store.ListExits(ctx, guard, target, clampInt(q.Get("limit"), 50, 1, 200))
+	if err != nil {
+		a.dbErr(w, err)
+		return
+	}
+	writeJSON(w, 200, map[string]any{"exits": list})
 }
 
 func jsonArgs(m map[string]any) map[string]any {

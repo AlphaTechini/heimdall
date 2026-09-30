@@ -343,8 +343,10 @@ func (e *Engine) Step(o Obs) Result {
 
 	// Debounce (W2): every Critical except S2 must be confirmed on debounceChecks consecutive checks.
 	eff := map[string]Signal{}
+	base := map[string]string{} // details without the "Confirming" note, for one-sentence reasons
 	for _, id := range []string{"S1", "S2", "S3", "S4"} {
 		s := raw[id]
+		base[id] = s.Detail
 		if s.Level == LevelCritical && id != "S2" {
 			e.crit[id]++
 			if e.crit[id] < c.DebounceChecks {
@@ -391,6 +393,7 @@ func (e *Engine) Step(o Obs) Result {
 		}
 	}
 	eff["S5"] = s5
+	base["S5"] = s5.Detail
 	if rank(s5.Level) >= 1 {
 		e.lastWarn["S5"] = now
 	}
@@ -419,6 +422,7 @@ func (e *Engine) Step(o Obs) Result {
 	} else {
 		e.s6Recent = nil
 	}
+	base["S6"] = s6.Detail
 	if s6.Level == LevelCritical {
 		e.crit["S6"]++
 		if e.crit["S6"] < c.DebounceChecks {
@@ -465,7 +469,11 @@ func (e *Engine) Step(o Obs) Result {
 		for _, id := range recent {
 			parts = append(parts, labelOf(id))
 		}
-		res.Reason = fmt.Sprintf("Critical: two different warnings within %d minutes (%s). %s", c.TwoWarningsWindowSec/60, strings.Join(parts, " and "), warning[0].Detail)
+		d := warning[0].Detail
+		if b, ok := base[warning[0].ID]; ok {
+			d = b
+		}
+		res.Reason = fmt.Sprintf("Critical: two different warnings within %d minutes (%s). %s", c.TwoWarningsWindowSec/60, strings.Join(parts, " and "), d)
 	case len(warning) > 0:
 		res.Severity = SevWarning
 		res.Reason = "Warning: " + warning[0].Detail

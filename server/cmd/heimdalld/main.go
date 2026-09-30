@@ -86,8 +86,12 @@ func serve() error {
 	if err != nil {
 		return err
 	}
-	if ch.ChainID.Uint64() != tg.ChainID {
+	// A local fork (chain id 31337) runs with the targets file of the chain it forks; any other mismatch is a mistake.
+	if ch.ChainID.Uint64() != tg.ChainID && ch.ChainID.Uint64() != 31337 {
 		return fmt.Errorf("the targets file %s is for chain %d but the RPC is chain %s", env.TargetsFile, tg.ChainID, ch.ChainID)
+	}
+	if ch.ChainID.Uint64() != tg.ChainID {
+		slog.Info("running on a local fork with a targets file for another chain", "targetsChain", tg.ChainID, "liveChain", ch.ChainID.String())
 	}
 	factory, err := factoryAddress(env, ch)
 	if err != nil {
@@ -138,6 +142,7 @@ func serve() error {
 	if err := w.LoadGuards(ctx); err != nil {
 		return err
 	}
+	w.RestoreSeverities(ctx)
 	sm := sim.New(ctx, env, tg, ch, st, w, ex, pol, h, em, factory)
 	if err := sm.Init(ctx); err != nil {
 		return err

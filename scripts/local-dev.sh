@@ -5,7 +5,8 @@
 # protocol contracts (scripts/demo-fork.sh).
 #
 #   bash scripts/local-dev.sh            start anvil if needed, deploy, write config/targets.local.json
-#   bash scripts/local-dev.sh --fresh    kill any anvil on the port first (clean chain)
+#   bash scripts/local-dev.sh --fresh    stop the anvil this script started on the same port first (clean chain)
+#   RPC_URL=http://127.0.0.1:8645 bash scripts/local-dev.sh   use another port (a second, independent stack)
 #
 # Then run the server with the env it prints.
 set -euo pipefail
@@ -19,7 +20,8 @@ PORT="${RPC##*:}"; PORT="${PORT%%/*}"
 ANVIL_KEY_9="0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
 
 if [[ "${1:-}" == "--fresh" ]]; then
-  pkill -x anvil 2>/dev/null || true
+  # only the anvil this script started on THIS port (other anvils keep running)
+  pkill -f -- "--block-time 1 --port $PORT" 2>/dev/null || true
   sleep 1
 fi
 # Some npm-wrapped foundry builds exit 0 even when the node is unreachable, so check the output.

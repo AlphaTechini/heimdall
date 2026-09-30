@@ -244,3 +244,16 @@ func (s *Store) CleanupAfterBlock(ctx context.Context, block uint64) error {
 	}
 	return nil
 }
+
+// LatestIncident returns the newest severity change of a target (ErrNotFound if none).
+func (s *Store) LatestIncident(ctx context.Context, target string) (*Incident, error) {
+	in := &Incident{}
+	var b int64
+	err := s.Pool.QueryRow(ctx, `SELECT id, target_id, block, time, from_severity, severity, reason FROM incidents
+		WHERE target_id=$1 ORDER BY id DESC LIMIT 1`, target).Scan(&in.ID, &in.TargetID, &b, &in.Time, &in.FromSeverity, &in.Severity, &in.Reason)
+	if err != nil {
+		return nil, notFound(err)
+	}
+	in.Block = uint64(b)
+	return in, nil
+}

@@ -209,3 +209,34 @@ func (s *Store) MarkStaleActiveExits(ctx context.Context) error {
 	_, err := s.Pool.Exec(ctx, `UPDATE exits SET status='stopped' WHERE status='active'`)
 	return err
 }
+
+// ListExits returns exits newest first; guard and target are optional filters.
+func (s *Store) ListExits(ctx context.Context, guard, target string, limit int) ([]*Exit, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT `+exitCols+` FROM exits
+		WHERE ($1 = '' OR guard = $1) AND ($2 = '' OR target_id = $2) ORDER BY id DESC LIMIT $3`, Lower(guard), target, limit)
+	if err != nil {
+		return nil, err
+	}
+	var out []*Exit
+	for rows.Next() {
+		e, err := scanExit(rows)
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for _, e := range out {
+		if e.Txs, err = s.exitTxs(ctx, e.ID); err != nil {
+			return nil, err
+		}
+	}
+	if out == nil {
+		out = []*Exit{}
+	}
+	return out, nil
+}

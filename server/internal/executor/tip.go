@@ -67,37 +67,51 @@ func weiToUSD(wei *big.Int, eth chain.Price) float64 {
 
 // tipPlan is the priority fee decision for one transaction.
 type tipPlan struct {
-	tipPerGas *big.Int // maxPriorityFeePerGas
-	capPerGas *big.Int // the highest tip per gas the user's cap allows (for replacements)
+	tipPerGas *big.Int // maxPriorityFeePerGas for this transaction
+	capPerGas *big.Int // the highest tip per gas the remaining budget allows (for replacements)
 	eth       chain.Price
-	note      string // why the tip is zero, when it is
+	note      string // why the tip is zero or reduced, when it is
 }
 
-// planTip implements specs W6 and details.md §9:
+// planTip implements specs W6 and details.md §9 with the owner's cap as a budget for the WHOLE
+// exit job, not per transaction:
 //
-//	tipPerGas = min(capWei, capWei*budgetPct/100) / gasLimit
+//	budgetWei    = min(capWei, capWei*budgetPct/100)      (fixed when the job sends its first tx)
+//	available    = budgetWei - tips already paid by mined txs (tip x gas used)
+//	tipPerGas    = available / gasLimit
 //
-// where capWei is the user's USD cap converted with the ETH/USD feed. Dividing by the gas limit
-// (the most gas the transaction can use) guarantees tip*gasLimit <= capWei: the cap is never exceeded.
-func planTip(ctx context.Context, feed *priceFeed, sig *config.Signals, severity string, tipCapUSD float64, priority bool, gasLimit uint64) tipPlan {
+// A replacement transaction replaces the exposure of the one it supersedes (only one of them can
+// be mined), so it draws from the same `available`. tip x gasLimit is therefore always within what
+// is left of the cap. When the budget is used up the exit keeps going with tip 0.
+func (x *Executor) planTip(j *job, gasLimit uint64) tipPlan {
 	zero := big.NewInt(0)
-	if !priority {
+	if !j.pol.PriorityExit {
 		return tipPlan{tipPerGas: zero, capPerGas: zero, note: "priority exit is turned off in the policy"}
 	}
-	eth, err := feed.get(ctx)
+	eth, err := x.feed.get(x.ctx)
 	if err != nil {
 		return tipPlan{tipPerGas: zero, capPerGas: zero, note: err.Error() + ", so no priority tip is added"}
 	}
-	c := capWei(tipCapUSD, eth)
-	pctBudget := sig.Tip.WarningBudgetPct
-	if severity == signals.SevCritical {
-		pctBudget = sig.Tip.CriticalBudgetPct
+	if j.budget == nil {
+		c := capWei(j.pol.TipCapUSD, eth)
+		pctBudget := x.sig.Tip.WarningBudgetPct
+		if j.severity == signals.SevCritical {
+			pctBudget = x.sig.Tip.CriticalBudgetPct
+		}
+		b, _ := new(big.Float).Mul(new(big.Float).SetInt(c), big.NewFloat(pctBudget/100)).Int(nil)
+		if b.Cmp(c) > 0 {
+			b = c
+		}
+		j.budget = b
 	}
-	budgetF := new(big.Float).Mul(new(big.Float).SetInt(c), big.NewFloat(pctBudget/100))
-	budget, _ := budgetF.Int(nil)
-	if budget.Cmp(c) > 0 {
-		budget = c
+	avail := new(big.Int).Sub(j.budget, j.paid)
+	perGas := new(big.Int)
+	if avail.Sign() > 0 {
+		perGas.Quo(avail, new(big.Int).SetUint64(gasLimit))
 	}
-	gl := new(big.Int).SetUint64(gasLimit)
-	return tipPlan{tipPerGas: new(big.Int).Quo(budget, gl), capPerGas: new(big.Int).Quo(c, gl), eth: eth}
+	p := tipPlan{tipPerGas: perGas, capPerGas: new(big.Int).Set(perGas), eth: eth}
+	if perGas.Sign() == 0 {
+		p.note = fmt.Sprintf("the $%.2f priority-tip budget for this exit is used up, so the rest is sent without a tip", j.pol.TipCapUSD)
+	}
+	return p
 }

@@ -89,6 +89,10 @@ type job struct {
 	partials  int
 	startBlk  uint64
 	episode   string
+	budget    *big.Int                 // total priority-tip budget for the whole exit (wei), set on the first tx
+	paid      *big.Int                 // tips paid by mined transactions (tip x gas used, wei)
+	tips      map[common.Hash]*big.Int // tip per gas of every transaction sent
+	tipNote   string
 }
 
 // Executor submits and tracks exits.
@@ -213,6 +217,11 @@ func (x *Executor) Trigger(tr Trigger) {
 		x.seen[ek] = true
 		gen := x.gen
 		x.mu.Unlock()
+		// After a restart the in-memory set is empty: do not start a second exit for an episode
+		// that already has one (a stopped or timed-out job stays stopped).
+		if done, err := x.st.HasExitInEpisode(x.ctx, p.Guard.Hex(), t.ID, tr.Episode); err == nil && done {
+			continue
+		}
 
 		pol, err := x.pol.For(x.ctx, p.Guard.Hex(), p.Owner.Hex(), t.ID)
 		if err != nil {
@@ -250,7 +259,7 @@ func (x *Executor) Trigger(tr Trigger) {
 		j := &job{
 			gen: gen, target: t, guard: p.Guard, owner: p.Owner, pol: pol, severity: tr.Severity, reason: tr.Reason,
 			reasonH: crypto.Keccak256Hash([]byte(tr.Reason)), decidedAt: tr.DecidedAt, full: act == policy.ExitFull,
-			burned: new(big.Int), totalOut: new(big.Int),
+			burned: new(big.Int), totalOut: new(big.Int), paid: new(big.Int), tips: map[common.Hash]*big.Int{},
 			deadline: time.Now().Add(time.Duration(x.sig.ExitRetryTimeoutSec) * time.Second),
 			startBlk: tr.Header.Number.Uint64(), episode: tr.Episode, maxAmount: new(big.Int).Set(maxUint256),
 		}
@@ -435,7 +444,7 @@ func (x *Executor) send(j *job, hdr *types.Header) {
 		gas = 500_000
 	}
 	gasLimit := gas * 13 / 10
-	plan := planTip(x.ctx, x.feed, x.sig, j.severity, j.pol.TipCapUSD, j.pol.PriorityExit, gasLimit)
+	plan := x.planTip(j, gasLimit)
 	bf, err := x.baseFee(hdr)
 	if err != nil {
 		x.fail(j, head, "Cannot read the current gas price: "+shortErr(err))
@@ -487,12 +496,23 @@ func (x *Executor) send(j *job, hdr *types.Header) {
 		}
 	}
 	j.pending = &pendingTx{hash: signed.Hash(), nonce: nonce, gasLimit: gasLimit, tip: plan.tipPerGas, maxFee: maxFee, sentBlock: head}
+	j.tips[signed.Hash()] = plan.tipPerGas
+	if plan.note != "" && plan.note != j.tipNote {
+		j.tipNote = plan.note
+		if !first {
+			j.exit.TipNote = plan.note
+			if err := x.st.UpdateExit(x.ctx, j.exit); err != nil {
+				slog.Error("cannot update exit", "err", err)
+			}
+			x.event(j, "alert", "Priority tip: "+plan.note+".", head, signed.Hash().Hex())
+		}
+	}
 	if err := x.st.InsertExitTx(x.ctx, j.exit.ID, store.ExitTx{Hash: signed.Hash().Hex(), Nonce: nonce, SentBlock: head,
 		MaxPriorityFeePerGasWei: plan.tipPerGas.String(), MaxFeePerGasWei: maxFee.String(), GasLimit: gasLimit, TipUSD: tipUSD, Result: "pending"}); err != nil {
 		slog.Error("cannot store exit transaction", "err", err)
 	}
 	if first {
-		msg := fmt.Sprintf("Exit submitted for %s: priority tip up to $%.2f (your cap is $%.2f), sent in block %d.", j.target.Label, tipUSD, j.pol.TipCapUSD, head)
+		msg := fmt.Sprintf("Exit submitted for %s: priority tip up to $%.2f (your cap for this whole exit is $%.2f), sent in block %d.", j.target.Label, tipUSD, j.pol.TipCapUSD, head)
 		if plan.tipPerGas.Sign() == 0 {
 			msg = fmt.Sprintf("Exit submitted for %s in block %d (no priority tip: %s).", j.target.Label, head, plan.note)
 		}
@@ -563,10 +583,16 @@ func (x *Executor) checkPending(j *job, head uint64) bool {
 	blk := rc.BlockNumber.Uint64()
 	j.pending = nil
 	hashS := mined.Hex()
+	tip := j.tips[mined]
+	if tip == nil {
+		tip = p.tip
+	}
 	tipUSD := 0.0
-	if p.tip.Sign() > 0 {
+	if tip.Sign() > 0 {
+		spent := new(big.Int).Mul(tip, new(big.Int).SetUint64(rc.GasUsed))
+		j.paid.Add(j.paid, spent) // counts against the exit's whole tip budget
 		if eth, err := x.feed.get(x.ctx); err == nil {
-			tipUSD = weiToUSD(new(big.Int).Mul(p.tip, new(big.Int).SetUint64(rc.GasUsed)), eth)
+			tipUSD = weiToUSD(spent, eth)
 		}
 	}
 	upd := store.ExitTx{Hash: hashS, Block: &blk, TipUSD: tipUSD, AmountOut: "0", Burned: "0", Remaining: "0", Result: "reverted"}
@@ -650,7 +676,7 @@ func (x *Executor) maybeReplace(j *job, hdr *types.Header) {
 	}
 	// A stuck transaction is replaced with a higher tip (never above the owner's cap) and a fee cap
 	// that covers the current base fee, so it can be mined even after a fee spike.
-	plan := planTip(x.ctx, x.feed, x.sig, signals.SevCritical, j.pol.TipCapUSD, j.pol.PriorityExit, p.gasLimit)
+	plan := x.planTip(j, p.gasLimit)
 	bf, err := x.baseFee(hdr)
 	if err != nil {
 		return
@@ -709,7 +735,7 @@ func (x *Executor) maybeReplace(j *job, hdr *types.Header) {
 	}
 	what := fmt.Sprintf("a higher priority tip ($%.2f, cap $%.2f)", tipUSD, j.pol.TipCapUSD)
 	if newTip.Cmp(p.tip) == 0 {
-		what = fmt.Sprintf("a higher fee limit (the priority tip stays at your cap of $%.2f)", j.pol.TipCapUSD)
+		what = fmt.Sprintf("a higher fee limit (the priority tip stays within what is left of your $%.2f cap)", j.pol.TipCapUSD)
 	}
 	x.event(j, "exit_submitted", fmt.Sprintf("The exit transaction was not mined after %d blocks; replaced it with %s.", stuckAfterBlocks, what), head, signed.Hash().Hex())
 	j.pending = &pendingTx{hash: signed.Hash(), nonce: p.nonce, gasLimit: p.gasLimit, tip: newTip, maxFee: maxFee, sentBlock: head, prev: append(p.prev, p.hash)}

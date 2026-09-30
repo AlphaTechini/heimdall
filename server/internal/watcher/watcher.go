@@ -230,6 +230,27 @@ func (w *Watcher) guardList() []guardInfo {
 	return out
 }
 
+// restoreSeverities sets each target's severity (and current episode) from its newest stored
+// incident, so a restart does not record a spurious transition. Debounce windows start empty.
+func (w *Watcher) restoreSeverities(ctx context.Context) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for id, ts := range w.states {
+		in, err := w.st.LatestIncident(ctx, id)
+		if err != nil {
+			continue
+		}
+		ts.severity = in.Severity
+		if in.Severity != signals.SevWatch {
+			ts.episode = fmt.Sprintf("%s:%d:%s", id, in.Block, in.Severity)
+		}
+		ts.latest.Severity, ts.latest.Reason = in.Severity, in.Reason
+	}
+}
+
+// RestoreSeverities is called once at startup.
+func (w *Watcher) RestoreSeverities(ctx context.Context) { w.restoreSeverities(ctx) }
+
 // Reset clears rolling state after the simulator reverted the chain (docs/api.md /sim/reset).
 func (w *Watcher) Reset(ctx context.Context) error {
 	w.procMu.Lock()
@@ -241,7 +262,11 @@ func (w *Watcher) Reset(ctx context.Context) error {
 	w.next = h.Number.Uint64() + 1
 	w.last.Store(h.Number.Uint64())
 	w.resetStates()
-	return w.LoadGuards(ctx)
+	if err := w.LoadGuards(ctx); err != nil {
+		return err
+	}
+	w.restoreSeverities(ctx)
+	return nil
 }
 
 // Run follows the chain until ctx ends.
@@ -398,6 +423,7 @@ func (w *Watcher) iterate(ctx context.Context) error {
 		if err := w.LoadGuards(ctx); err != nil {
 			return err
 		}
+		w.restoreSeverities(ctx)
 		return nil
 	}
 	if n < w.next {
