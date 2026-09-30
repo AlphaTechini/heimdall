@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/AlphaTechini/heimdall/server/internal/store"
@@ -144,7 +143,7 @@ func (d *Dispatcher) Channel(name string) Notifier {
 func (d *Dispatcher) SendNow(ctx context.Context, channel string, r Recipient, m Message) error {
 	n := d.Channel(channel)
 	if n == nil {
-		return fmt.Errorf("%s alerts are not set up on this server", strings.Title(channel)) //nolint:staticcheck
+		return fmt.Errorf("%s alerts are not set up on this server", channel)
 	}
 	ok, err := n.Send(ctx, r, m)
 	if err != nil {
