@@ -85,7 +85,7 @@ The installer asks for a password for the `postgres` superuser; remember it. It 
 ```
 Check: `"/c/Program Files/PostgreSQL/16/bin/psql.exe" "postgres://heimdall:heimdall@127.0.0.1:5432/heimdall" -c "select 1"` prints `1`.
 
-No install alternative: a free hosted Postgres (https://neon.tech): create a project and use its connection string as `DATABASE_URL` in step 3.3.
+No install alternative (what this project uses): **Supabase**. Project → Connect → **Session pooler** connection string (port 5432), with `?sslmode=require`, as `DATABASE_URL` in `server/.env`. Do not use the transaction pooler (port 6543): the migrations need a session-level advisory lock. The server creates its tables on first start and turns on row-level security for each of them (migration `002_rls.sql`), so Supabase's public Data API cannot read them; the server connects as the table owner and is not affected.
 
 ---
 
