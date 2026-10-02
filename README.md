@@ -96,6 +96,8 @@ Last updated 2026-09-30 by the cloud build session. The cloud sandbox cannot rea
 | Area | Command | Result |
 |---|---|---|
 | Contracts | `cd contracts && forge build && forge test` | compiles; 11 passed, 0 failed, 2 skipped (fork tests skip cleanly without `ARBITRUM_ONE_RPC_URL`) |
+| Fork tests (T2), builder machine 2026-10-02 | `ARBITRUM_ONE_RPC_URL=https://arb1.arbitrum.io/rpc FORK_ERC4626_VAULT=0x7e97fa6893871A2751B5fE961978DCCb2c201E65 forge test --match-contract ForkExits -vv` | 2 passed, 0 failed, 0 skipped: real Aave V3 exit (4,999.999998 USDC out of 5,000) and real Morpho Gauntlet USDC Core exit (9,999.999998 USDC out of 10,000) |
+| Database on Supabase (session pooler, Postgres 17.11), 2026-10-02 | store.Open with `server/.env` | migrations 001 and 002 applied, 16/16 tables with row-level security, write/read round trip ok |
 | Server | `cd server && go build ./... && go vet ./... && gofmt -l .` | clean, no output |
 | Server run | `scripts/local-dev.sh --fresh`, `heimdalld` (DEMO_MODE=true) + Postgres 16 | `/healthz`, `/config`, `/positions`, `/signals`, `/exits`, `/backtests` answer |
 | Demo loop (API) | Ada creates a Guard, deposits 10,000 shares; `POST /sim/scenarios/fast-drain/run` | Watch → Warning (5.5%/60s) → Critical (16.5%/60s) → exit submitted (priority tip) → partial exit 6,200 USDC → retry → remaining 3,800 USDC; Ada's wallet 0 → 10,000 USDC; decision to broadcast 3 ms |
@@ -110,7 +112,6 @@ Also exercised by the agents that built each part (see commit messages): `exit_h
 ### Not done or not verifiable in the cloud
 
 - **Arbitrum One fork demo** (`scripts/demo-fork.sh`, `heimdalld demo-seed`, fast drain against a real Morpho vault): written, not run. The partial-then-complete exit is tuned on the mock vault; on a real vault the partial exit only shows if the configured `sim.drainers` hold enough shares to pull available liquidity below Ada's position. Tune the drainer list if the exit completes in one go.
-- **Fork tests** (`contracts/test/ForkExits.t.sol`): written, skipped here.
 - **Deployments** on Arbitrum Sepolia / One: script ready (`scripts/deploy.sh`), not run.
 - **Real Telegram and Resend delivery**: code verified against local stubs only.
 - **Backtest (TMX)**: the replay command exists (`heimdalld backtest`, docs/api.md §8) but no data was fetched (needs an archive RPC). Per specs N7 the Backtest page stays hidden until a real data file exists.
@@ -126,7 +127,7 @@ Step-by-step version with every command, account sign-up and the TMX backtest in
 
 1. **Tools:** install Foundry, Go 1.26, Node 22 + pnpm, Postgres 16; `git submodule update --init --recursive`.
 2. **Placeholders: done (2026-10-02).** `config/targets.arbitrum-one.json` now points at the Morpho vault Gauntlet USDC Core (`0x7e97fa6893871A2751B5fE961978DCCb2c201E65`) with Chainlink feeds, 11 drainer accounts and a USDC source, each with its source and checked on-chain; `config/targets.arbitrum-sepolia.json` has its ETH/USD feed. The server's `LoadTargets` loads both files without warnings. Balances drift: if `demo-seed` or the fast drain complains, see the troubleshooting table in `docs/FINAL_STEPS.md`.
-3. **Fork tests:** `cd contracts && ARBITRUM_ONE_RPC_URL=... FORK_ERC4626_VAULT=<the Morpho vault> forge test --match-contract ForkExits -vv` (proof that real exits work, specs T2).
+3. **Fork tests: done 2026-10-02** (see table). To re-run: `cd contracts && ARBITRUM_ONE_RPC_URL=... FORK_ERC4626_VAULT=<the Morpho vault> forge test --match-contract ForkExits -vv` (proof that real exits work, specs T2).
 4. **Demo fork:** `export ARBITRUM_ONE_RPC_URL=...; bash scripts/demo-fork.sh`, then start `heimdalld` with the env it prints plus `AUTH_SECRET=$(openssl rand -hex 32)`, then `cd web && pnpm install && pnpm dev`. Add network `http://127.0.0.1:8545` / chain id 31337 to your wallet and import anvil accounts #1 (Ada) and #2 (Ben). Run Protect → Simulator → Fast drain; if the exit does not go partial first, add more `sim.drainers`. Optionally run `API_URL=http://127.0.0.1:8080 python3 e2e/clickthrough.py` against it.
 5. **Telegram bot:** create it with @BotFather, set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_BOT_USERNAME`; link it in Settings and press Send test alert.
 6. **Resend:** create an API key and set `RESEND_API_KEY` and `EMAIL_FROM` (a verified domain, e.g. a subdomain of cyberpunkinc.xyz; without one Resend only delivers to the account's own address). Verify your email in Settings and press Send test email.
