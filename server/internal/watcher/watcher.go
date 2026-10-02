@@ -309,7 +309,21 @@ func (w *Watcher) initCursor(ctx context.Context) error {
 	defer w.procMu.Unlock()
 	if v, _ := w.st.GetMeta(ctx, "cursor"); v != "" {
 		var n uint64
-		if _, err := fmt.Sscan(v, &n); err == nil && n <= head+1 {
+		_, err := fmt.Sscan(v, &n)
+		valid := err == nil && n <= head+1
+		if valid && w.ch.ChainID.Uint64() == 31337 {
+			// A cursor at or before this fork's start block was saved on an earlier fork: its
+			// guards, exits and history describe a chain that no longer exists. Users and
+			// settings are kept.
+			if fb := w.forkBlock(ctx); fb > 0 && n <= fb {
+				if err := w.st.CleanupAfterBlock(ctx, 0); err != nil {
+					return fmt.Errorf("cannot clear data from an earlier fork: %w", err)
+				}
+				slog.Info("new fork detected; cleared chain data from the earlier fork", "oldCursor", n, "forkBlock", fb)
+				valid = false
+			}
+		}
+		if valid {
 			w.next = n
 			w.backfill = false
 			slog.Info("watcher resuming", "nextBlock", n, "head", head)

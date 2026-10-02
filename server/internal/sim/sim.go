@@ -308,7 +308,8 @@ func (s *Sim) impersonate(ctx context.Context, a common.Address) error {
 }
 
 func (s *Sim) waitReceipt(ctx context.Context, h common.Hash) error {
-	deadline := time.Now().Add(30 * time.Second)
+	// Generous: on a fresh fork the first call into a protocol fetches its state from the upstream RPC.
+	deadline := time.Now().Add(120 * time.Second)
 	lastMine := time.Now()
 	for time.Now().Before(deadline) {
 		rc, err := s.ch.Eth.TransactionReceipt(ctx, h)

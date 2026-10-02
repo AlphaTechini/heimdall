@@ -230,7 +230,7 @@ func (w *Watcher) observe(ctx context.Context, ts *targetState, hdr *types.Heade
 					return err
 				}
 				mu.Lock()
-				liq = append(liq, signals.LiqSample{Available: exA, Position: posA})
+				liq = append(liq, signals.LiqSample{Available: exA, Position: posA, Capped: true})
 				mu.Unlock()
 				return nil
 			})
