@@ -50,10 +50,11 @@ echo ">> seeding Ada and Ben"
 
 cat <<OUT
 
-Fork is ready. Run the server (from server/) with:
+Fork is ready. Run the server (from server/) with the lines below. They match what server/.env
+needs for the fork demo; if your server/.env already has these values, just run the last line.
+DATABASE_URL, AUTH_SECRET and the alert settings always come from server/.env.
 
   export RPC_HTTP_URL=$RPC
-  export DATABASE_URL=postgres://heimdall:heimdall@127.0.0.1:5432/heimdall?sslmode=disable
   export TARGETS_FILE=../config/targets.arbitrum-one.json
   export SIGNALS_FILE=../config/signals.json
   export DEPLOYMENT_FILE=../contracts/deployments/31337.json
