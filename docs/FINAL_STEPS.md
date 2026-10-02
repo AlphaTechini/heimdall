@@ -66,15 +66,31 @@ git submodule update --init --recursive
    ```
    A number means archive works. `missing trie node` means it does not (you can still do everything except step 7).
 
-### 1.4 Save your settings in one file
-Create `~/.heimdall-env` (all scripts read it; it is outside the repo, so it is never committed):
+### 1.4 The two settings files
+
+Heimdall has two settings files. They are plain text, one `NAME=value` per line, and both stay off GitHub.
+
+| File | Who reads it | What goes in it |
+|---|---|---|
+| `server/.env` (in the repo, git-ignored) | the Go server, every time it starts | database, alerts, keeper key, which config files to use (section 3.3) |
+| `C:\Users\rehob\.heimdall-env` (your home folder) | the bash scripts (`demo-fork.sh`, `deploy.sh`) and the commands in this guide | your two Alchemy RPC URLs |
+
+Why `.env` and not `.ini`: `.env` is the usual format for app settings and secrets. It is the same `NAME=value` lines as an `.ini` file, just without `[sections]`; the server reads it with a few lines of code (`server/internal/config/env.go`). Why a second file: the scripts are bash, and bash loads settings by running a file of `export NAME=value` lines (`source ~/.heimdall-env`). Keeping the RPC URLs in your home folder also keeps your Alchemy key out of the repo.
+
+Create `.heimdall-env` once. Either open Notepad, paste the two lines below with your key in place of `<KEY>`, and save as `C:\Users\rehob\.heimdall-env` (Save as type: All files):
+```bash
+export ARBITRUM_ONE_RPC_URL="https://arb-mainnet.g.alchemy.com/v2/<KEY>"
+export ARBITRUM_SEPOLIA_RPC_URL="https://arb-sepolia.g.alchemy.com/v2/<KEY>"
+```
+or run this in Git Bash (it writes the lines between the two `EOF` markers into the file):
 ```bash
 cat > ~/.heimdall-env <<'EOF'
 export ARBITRUM_ONE_RPC_URL="https://arb-mainnet.g.alchemy.com/v2/<KEY>"
 export ARBITRUM_SEPOLIA_RPC_URL="https://arb-sepolia.g.alchemy.com/v2/<KEY>"
 EOF
-source ~/.heimdall-env
 ```
+The scripts load it on their own. For the plain commands in this guide, run `source ~/.heimdall-env` first in that Git Bash window.
+
 Postgres (once). In PowerShell:
 ```powershell
 winget install -e --id PostgreSQL.PostgreSQL.16
@@ -115,19 +131,34 @@ cd ..
    - **With a domain (recommended):** **Domains** → **Add domain** → a subdomain you own (for example `mail.cyberpunkinc.xyz`) → add the DNS records Resend shows (TXT/MX) at your DNS host → wait for **Verified**. Then `EMAIL_FROM="Heimdall <alerts@mail.cyberpunkinc.xyz>"`.
    - **No domain:** `EMAIL_FROM="Heimdall <onboarding@resend.dev>"`. Resend then only delivers to the email you signed up with, which is fine for the demo if Ada's email is yours.
 
-### 3.3 Put the secrets in `server/.env`
-`server/.env` is git-ignored and the server loads it on start. Create it once:
-```bash
-cat > server/.env <<EOF
-DATABASE_URL=postgres://heimdall:heimdall@127.0.0.1:5432/heimdall?sslmode=disable
-AUTH_SECRET=$(openssl rand -hex 32)
-TELEGRAM_BOT_TOKEN=<token from BotFather>
-TELEGRAM_BOT_USERNAME=<bot username, with or without @>
-RESEND_API_KEY=<re_...>
-EMAIL_FROM=Heimdall <alerts@mail.yourdomain>
-EOF
-```
-Then edit the four `<...>` values in a text editor.
+### 3.3 Fill in `server/.env`
+
+Your `server/.env` started as a copy of `server/.env.example`; keep it that way and change values in a text editor. Every line, and what it should be for the fork demo:
+
+| Line | Value for the fork demo | Status |
+|---|---|---|
+| `DATABASE_URL` | your Supabase session-pooler URL with `?sslmode=require` | **set by you**, tested OK |
+| `HTTP_ADDR` | `:8080` | already right |
+| `CORS_ORIGIN` | leave as is | already right |
+| `RPC_HTTP_URL` | `http://127.0.0.1:8545`: the local fork, not Alchemy (the server talks to anvil, anvil talks to Alchemy) | already right |
+| `RPC_WS_URL` | empty | already right |
+| `START_BLOCK` | empty | already right |
+| `TARGETS_FILE` | `../config/targets.arbitrum-one.json` | filled in 2026-10-02 |
+| `SIGNALS_FILE` | `../config/signals.json` | already right |
+| `BACKTESTS_DIR` | empty | already right |
+| `FACTORY_ADDRESS` | empty (read from `DEPLOYMENT_FILE`) | already right |
+| `DEPLOYMENT_FILE` | `../contracts/deployments/31337.json` (written by demo-fork.sh) | already right |
+| `KEEPER_PRIVATE_KEY` | anvil test key #9 (public, fork only) | filled in 2026-10-02 |
+| `DEMO_MODE` | `true` (turns on the simulator; it only works on the local fork) | filled in 2026-10-02 |
+| `AUTH_SECRET` | a random 64-character string | filled in 2026-10-02 (generated) |
+| `TELEGRAM_BOT_TOKEN` | the token from BotFather (3.1) | **you** |
+| `TELEGRAM_BOT_USERNAME` | your bot's username, e.g. `heimdall_guard_bot` | **you** |
+| `RESEND_API_KEY` | `re_...` from Resend (3.2) | **you** |
+| `EMAIL_FROM` | `Heimdall <alerts@mail.yourdomain>` or `Heimdall <onboarding@resend.dev>` | **you** |
+| `DEFAULT_TIP_CAP_USD` | `2` | already right |
+| `LOG_LEVEL` | `info` (`debug` when something is wrong) | already right |
+
+The Alchemy URLs do **not** go in `server/.env`; they go in `~/.heimdall-env` (1.4). Restart the server after any change to `server/.env`.
 
 ---
 
@@ -143,7 +174,7 @@ bash scripts/demo-fork.sh
 It starts anvil (a local copy of Arbitrum One, chain id 31337), deploys the factory, and gives Ada and Ben 10,000 USDC each in the Gauntlet vault (Ada also gets Aave). It ends by printing a block of `export` lines. If it fails, read `.local/anvil-fork.log`.
 
 **Window 2: server**
-Paste the `export` lines that demo-fork.sh printed (they set `DEMO_MODE=true`, the keeper key, the targets file), then:
+`server/.env` already has everything (3.3), so you do not need the `export` lines demo-fork.sh prints. Just:
 ```bash
 cd server
 go run ./cmd/heimdalld
