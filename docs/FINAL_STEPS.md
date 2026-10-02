@@ -46,8 +46,9 @@ They work for a quick try, but the fork makes many requests and the backtest nee
   forge --version && anvil --version
   ```
   (Foundryup only works in Git Bash or WSL, not PowerShell.)
-- **Go 1.26**, **Node 22 + pnpm**, **jq**, **Docker Desktop**: already on this machine. Check with `go version; pnpm -v; jq --version; docker -v`.
-- **Postgres**: no install needed, Docker runs it (step 1.4).
+- If Foundry is installed but `forge` is not found, add it to PATH: `echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.bashrc` and open a new Git Bash window.
+- **Go 1.26**, **Node 22 + pnpm**, **jq**: already on this machine. Check with `go version; pnpm -v; jq --version`.
+- **Postgres 16** (the server will not start without it). Docker is not needed; install Postgres natively, see step 1.4.
 
 ### 1.2 Get the contract libraries
 ```bash
@@ -74,10 +75,17 @@ export ARBITRUM_SEPOLIA_RPC_URL="https://arb-sepolia.g.alchemy.com/v2/<KEY>"
 EOF
 source ~/.heimdall-env
 ```
-Start Postgres:
-```bash
-docker compose up -d postgres
+Postgres (once). In PowerShell:
+```powershell
+winget install -e --id PostgreSQL.PostgreSQL.16
 ```
+The installer asks for a password for the `postgres` superuser; remember it. It installs as a Windows service that starts automatically. Then create Heimdall's user and database (Git Bash):
+```bash
+"/c/Program Files/PostgreSQL/16/bin/psql.exe" -U postgres -h 127.0.0.1   -c "CREATE USER heimdall WITH PASSWORD 'heimdall';" -c "CREATE DATABASE heimdall OWNER heimdall;"
+```
+Check: `"/c/Program Files/PostgreSQL/16/bin/psql.exe" "postgres://heimdall:heimdall@127.0.0.1:5432/heimdall" -c "select 1"` prints `1`.
+
+No install alternative: a free hosted Postgres (https://neon.tech): create a project and use its connection string as `DATABASE_URL` in step 3.3.
 
 ---
 
@@ -268,7 +276,7 @@ Then open the **Backtest** page in the app (no restart needed). If it says it ca
 | demo-fork.sh: USDC source "holds only X USDC" | Pick another big holder from https://arbiscan.io/token/0xaf88d065e77c8cC2239327C5EDb3A432268e5831#balances (a plain wallet, not a contract), put it in `demo.usdcSource`. |
 | Fork is slow or errors with 429 | You are on the public RPC. Use your Alchemy/QuickNode URL. |
 | Wallet shows wrong nonce / stuck tx after restarting the fork | MetaMask → Settings → Advanced → Clear activity tab data. |
-| Server: database connection refused | `docker compose up -d postgres`, wait 5 s. |
+| Server: cannot reach Postgres | Start the service: PowerShell as admin, `Start-Service postgresql-x64-16`. Check `DATABASE_URL` in `server/.env`. |
 | No Telegram message | Did you press Start in the bot chat from the Settings link? Is the token in `server/.env`? Restart the server after editing `.env`. |
 | No email | Without a verified domain, Resend only sends to your Resend account email. |
 | deploy.sh: verification failed | Re-run the same command; Arbiscan sometimes needs a minute after deployment. |
