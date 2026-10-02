@@ -13,17 +13,17 @@
     }
   },
   "ethUsdFeed": {
-    "address": "",
-    "source": "PLACEHOLDER: Chainlink ETH/USD price feed on Arbitrum One. Copy the proxy address from https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum (ETH / USD) and confirm it on https://arbiscan.io. Used to convert the priority-tip cap from USD to wei; with it empty the executor sends exits without a priority tip."
+    "address": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
+    "source": "Chainlink ETH / USD proxy (path eth-usd, 8 decimals), https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum (Chainlink feed directory data: https://reference-data-directory.vercel.app/feeds-ethereum-mainnet-arbitrum-1.json); on-chain description() = 'ETH / USD', checked 2026-10-02; https://arbiscan.io/address/0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612"
   },
   "targets": [
     {
       "id": "morpho-usdc",
-      "label": "Morpho vault (USDC)",
+      "label": "Gauntlet USDC Core (Morpho)",
       "protocol": "Morpho",
       "type": "ERC4626",
-      "address": "",
-      "source": "PLACEHOLDER: pick a Morpho USDC vault on Arbitrum One from https://app.morpho.org (Arbitrum, Earn) and confirm it on https://arbiscan.io; paste the URL here",
+      "address": "0x7e97fa6893871A2751B5fE961978DCCb2c201E65",
+      "source": "Morpho 'Gauntlet USDC Core' (gtUSDCc), a listed MetaMorpho vault: https://app.morpho.org/arbitrum/vault/0x7e97fa6893871A2751B5fE961978DCCb2c201E65 ; Morpho API https://blue-api.morpho.org/graphql (vaultByAddress, chainId 42161); on-chain asset() = USDC, name() = 'Gauntlet USDC Core', totalAssets ~767,846 USDC on 2026-10-02; https://arbiscan.io/address/0x7e97fa6893871A2751B5fE961978DCCb2c201E65",
       "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
       "assetSymbol": "USDC",
       "assetDecimals": 6,
@@ -31,18 +31,18 @@
       "assetIsStable": true,
       "signals": {
         "marketFeed": {
-          "address": "",
-          "source": "PLACEHOLDER: the price feed the chosen vault's markets use for their main collateral (Chainlink-style: decimals and latestRoundData). Find it in the market's oracle on https://app.morpho.org or Arbiscan."
+          "address": "0x6ce185860a4963106506C203335A2910413708e9",
+          "source": "Chainlink BTC / USD (path btc-usd, 8 decimals), https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum (Chainlink feed directory data: https://reference-data-directory.vercel.app/feeds-ethereum-mainnet-arbitrum-1.json). It is BASE_FEED_2 of MorphoChainlinkOracleV2 0x88193FcB705d29724A40Bb818eCAA47dD5F014d9, the oracle of the vault's largest market (WBTC/USDC, Morpho market 0xe6392ff19d10454b099d692b58c361ef93e31af34ed1ef78232e07c78fe99169, ~73% of the vault on 2026-10-02, per the Morpho API)"
         },
         "referenceFeed": {
-          "address": "",
-          "source": "PLACEHOLDER: an independent Chainlink price feed for the same asset from https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum"
+          "address": "0xd0C7101eACbB49F3deCcCc166d238410D6D46d57",
+          "source": "Chainlink WBTC / USD (path wbtc-usd, 8 decimals), a separate feed pricing the same collateral, https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum (Chainlink feed directory data: https://reference-data-directory.vercel.app/feeds-ethereum-mainnet-arbitrum-1.json); on 2026-10-02 it read 0.14% below BTC / USD"
         },
         "collateralFeeds": [
           {
-            "label": "PLACEHOLDER collateral",
-            "address": "",
-            "source": "PLACEHOLDER: Chainlink feed of a stablecoin used as collateral in the vault's markets"
+            "label": "USDS",
+            "address": "0x37833E5b3fbbEd4D613a3e0C354eF91A42B81eeB",
+            "source": "Chainlink USDS / USD (path usds-usd, 8 decimals), https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum (Chainlink feed directory data: https://reference-data-directory.vercel.app/feeds-ethereum-mainnet-arbitrum-1.json). USDS backs the vault's sUSDS/USDC market (Morpho market 0x77fe2f7c2dd6f4da6bc5f445b06052ff8df55cb70cfce9afc16ec3c69a5fd3a3, ~17% of the vault), whose oracle prices sUSDS with the sUSDS/USDS exchange rate only and assumes USDS = $1"
           }
         ],
         "liquidity": {
@@ -51,8 +51,20 @@
         }
       },
       "sim": {
-        "drainers": [],
-        "drainersSource": "PLACEHOLDER: addresses of the biggest share holders of the vault (Arbiscan token holders tab). The simulator impersonates them to pull liquidity out."
+        "drainers": [
+          "0x1C833BE428a5B0b7e9d0253411b997f28043d718",
+          "0x9F10C5dDa640228Ae67D89d4B2Cb6ECCD71bD563",
+          "0x66eC838417333254Bdbe1CC989B1B7F22E1b04a3",
+          "0xb462A05f62C0410eC36c7CE665Cd464C0044Fc88",
+          "0xF82cf3FF05Eb9875D6F465E27f8AB767D8B91487",
+          "0x5D3a71920beD88C0758e21719Ceb1354cf8EF914",
+          "0x514A4ccE468922AF7bF7dD357C16440dd8AbEAdE",
+          "0xBc6dA126F2e08ADed6A00B3A6A567aD745bE9aDb",
+          "0x17654E42a615f7C9959F94bf7b83CF0C413f2966",
+          "0x14042E86FBA2b0bB577893108BB37A2A81f23aba",
+          "0x8C4bA8AD6538e4CbFA8aE5FBdF36a65580CcC971"
+        ],
+        "drainersSource": "The largest gtUSDCc share holders that are EOAs (some EIP-7702 delegated), from the Morpho API vaultPositions (orderBy Shares) and https://arbiscan.io/token/0x7e97fa6893871A2751B5fE961978DCCb2c201E65#balances ; together ~532,000 of ~731,950 shares on 2026-10-02 (balanceOf and eth_getCode checked on https://arb1.arbitrum.io/rpc). Contract holders were left out."
       }
     },
     {
@@ -84,8 +96,8 @@
     "ben": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
     "benSource": "anvil default account #2 (public test account, https://book.getfoundry.sh/anvil/)",
     "usdcSource": {
-      "address": "",
-      "source": "PLACEHOLDER: an Arbitrum One account holding at least 25,000 USDC (pick a large holder from https://arbiscan.io/token/0xaf88d065e77c8cC2239327C5EDb3A432268e5831#balances and paste the Arbiscan URL here). The demo-seed command impersonates it on the fork to fund Ada and Ben."
+      "address": "0x1714400FF23dB4aF24F9fd64e7039e6597f18C2b",
+      "source": "An EOA holding ~5,931,281 USDC on 2026-10-02 (balanceOf checked on https://arb1.arbitrum.io/rpc): https://arbiscan.io/address/0x1714400FF23dB4aF24F9fd64e7039e6597f18C2b ; if its balance drops below 25,000, pick another holder from https://arbiscan.io/token/0xaf88d065e77c8cC2239327C5EDb3A432268e5831#balances"
     }
   },
   "sepolia": {

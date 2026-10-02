@@ -121,8 +121,11 @@ Also exercised by the agents that built each part (see commit messages): `exit_h
 
 ### What the builder must do locally
 
+Step-by-step version with every command, account sign-up and the TMX backtest inputs already worked out: **`docs/FINAL_STEPS.md`**.
+
+
 1. **Tools:** install Foundry, Go 1.26, Node 22 + pnpm, Postgres 16; `git submodule update --init --recursive`.
-2. **Fill the placeholders** in `config/targets.arbitrum-one.json`, each with an address and a `source` URL (never from memory, specs N8): a Morpho USDC vault on Arbitrum One (`targets[morpho-usdc].address`, from app.morpho.org + Arbiscan), `ethUsdFeed` (Chainlink ETH/USD from docs.chain.link), the vault's `signals` feeds (market feed, reference feed, collateral feeds), `sim.drainers` (largest share holders of that vault, Arbiscan holders tab) and `demo.usdcSource` (a large USDC holder). `heimdalld demo-seed` prints whatever is still missing.
+2. **Placeholders: done (2026-10-02).** `config/targets.arbitrum-one.json` now points at the Morpho vault Gauntlet USDC Core (`0x7e97fa6893871A2751B5fE961978DCCb2c201E65`) with Chainlink feeds, 11 drainer accounts and a USDC source, each with its source and checked on-chain; `config/targets.arbitrum-sepolia.json` has its ETH/USD feed. The server's `LoadTargets` loads both files without warnings. Balances drift: if `demo-seed` or the fast drain complains, see the troubleshooting table in `docs/FINAL_STEPS.md`.
 3. **Fork tests:** `cd contracts && ARBITRUM_ONE_RPC_URL=... FORK_ERC4626_VAULT=<the Morpho vault> forge test --match-contract ForkExits -vv` (proof that real exits work, specs T2).
 4. **Demo fork:** `export ARBITRUM_ONE_RPC_URL=...; bash scripts/demo-fork.sh`, then start `heimdalld` with the env it prints plus `AUTH_SECRET=$(openssl rand -hex 32)`, then `cd web && pnpm install && pnpm dev`. Add network `http://127.0.0.1:8545` / chain id 31337 to your wallet and import anvil accounts #1 (Ada) and #2 (Ben). Run Protect → Simulator → Fast drain; if the exit does not go partial first, add more `sim.drainers`. Optionally run `API_URL=http://127.0.0.1:8080 python3 e2e/clickthrough.py` against it.
 5. **Telegram bot:** create it with @BotFather, set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_BOT_USERNAME`; link it in Settings and press Send test alert.

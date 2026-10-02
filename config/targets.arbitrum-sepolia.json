@@ -13,8 +13,8 @@
     }
   },
   "ethUsdFeed": {
-    "address": "",
-    "source": "PLACEHOLDER: Chainlink ETH/USD on Arbitrum Sepolia from https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum&testnetPage=1"
+    "address": "0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165",
+    "source": "Chainlink ETH / USD on Arbitrum Sepolia (path eth-usd, 8 decimals), https://docs.chain.link/data-feeds/price-feeds/addresses?network=arbitrum&testnetPage=1 (data: https://reference-data-directory.vercel.app/feeds-ethereum-testnet-sepolia-arbitrum-1.json); latestRoundData checked on https://sepolia-rollup.arbitrum.io/rpc 2026-10-02"
   },
   "targets": []
 }
