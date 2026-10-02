@@ -65,6 +65,9 @@ type NamedPrice struct {
 type LiqSample struct {
 	Available *big.Int
 	Position  *big.Int
+	// Capped: Available can never exceed Position (a Guard's own exitable amount, "exitable"
+	// mode), so the check is "can it all come out now" instead of the liquidity multiple.
+	Capped bool
 }
 
 // S6Event is a risky config change seen on a watched contract.
@@ -382,7 +385,11 @@ func (e *Engine) Step(o Obs) Result {
 				continue
 			}
 			av, pos := units(l.Available, dec), units(l.Position, dec)
-			if av < c.S5.WarnLiquidityMultiple*pos {
+			need := c.S5.WarnLiquidityMultiple * pos
+			if l.Capped {
+				need = pos * 0.9999 // vaults round redemptions down by a few base units
+			}
+			if av < need {
 				why = append(why, fmt.Sprintf("only %s can be withdrawn right now against a position of %s", FormatAmount(av, sym), FormatAmount(pos, sym)))
 				break
 			}

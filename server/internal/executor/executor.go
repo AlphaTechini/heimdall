@@ -630,7 +630,10 @@ func (x *Executor) checkPending(j *job, head uint64) bool {
 			slog.Error("cannot update exit transaction", "err", err)
 		}
 		j.exit.TotalOut = j.totalOut.String()
-		complete := rem.Sign() == 0 || (!j.full && j.burned.Cmp(j.maxAmount) >= 0)
+		// Vaults round redemptions down, so a few share units can stay behind; under one
+		// millionth of the position counts as done (the owner can still withdraw that dust).
+		dust := new(big.Int).Mul(rem, big.NewInt(1_000_000)).Cmp(new(big.Int).Add(j.burned, rem)) < 0
+		complete := rem.Sign() == 0 || dust || (!j.full && j.burned.Cmp(j.maxAmount) >= 0)
 		if complete {
 			msg := fmt.Sprintf("Exit complete: %s returned to your wallet.", amt(j.totalOut))
 			if j.partials > 0 {
