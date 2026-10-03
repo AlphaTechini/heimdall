@@ -4,3 +4,7 @@
 node_modules/
 config/targets.local.json
 .local/
+
+# Local-only guides (never committed)
+docs/FINAL_STEPS.md
+docs/VIDEO_PLAN.md

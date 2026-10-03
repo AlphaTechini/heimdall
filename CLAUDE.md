@@ -15,5 +15,5 @@ Heimdall is the exit guard for Arbitrum depositors (Arbitrum Open House Singapor
 - Minimal tests (see specs §3). Accuracy through the verification gate in `docs/instructions.md` §4: no "done" without fresh command output as evidence.
 - Every visible UI element must work (see `docs/UI_UX.md` §5). Build only the elements in `docs/UI_UX.md` §6.
 - Never guess third-party addresses, ABIs or library APIs: read the source or official docs.
-- Never commit secrets. `.gitignore` covers `.env` and `node_modules`; all markdown docs are committed.
+- Never commit secrets. `.gitignore` covers `.env` and `node_modules`; all markdown docs are committed except the local-only guides listed in `.gitignore`.
 - Commit and push small working steps. Keep `README.md` → "Status" current, including what the builder must do locally.
