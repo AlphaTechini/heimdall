@@ -83,12 +83,15 @@ type Result struct {
 func retry[T any](f func() (T, error)) (T, error) {
 	var zero T
 	var err error
-	for i := 0; i < 4; i++ {
+	// Backoff 1, 2, 4, 8, 16 s: rides out a minute-long RPC or network hiccup on long replays.
+	for i := 0; i < 6; i++ {
 		var v T
 		if v, err = f(); err == nil {
 			return v, nil
 		}
-		time.Sleep(time.Duration(i+1) * 500 * time.Millisecond)
+		if i < 5 {
+			time.Sleep(time.Second << i)
+		}
 	}
 	return zero, err
 }
