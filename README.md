@@ -82,7 +82,7 @@ python3 e2e/clickthrough.py            # optional: full click-through with a stu
 
 | Network | HeimdallGuardFactory | HeimdallGuard implementation |
 |---|---|---|
-| Arbitrum Sepolia | not deployed yet | not deployed yet |
+| Arbitrum Sepolia | [`0x3346D96f88122eC3c7B50E50120789ECA21bdcf6`](https://sepolia.arbiscan.io/address/0x3346D96f88122eC3c7B50E50120789ECA21bdcf6#code) | [`0xA0A7F454142905f992c58CC31d0a65cdc29B2633`](https://sepolia.arbiscan.io/address/0xA0A7F454142905f992c58CC31d0a65cdc29B2633#code) |
 | Arbitrum One (experimental, unaudited) | not deployed yet | not deployed yet |
 
 Demo video: not recorded yet.
@@ -96,6 +96,7 @@ Last updated 2026-09-30 by the cloud build session. The cloud sandbox cannot rea
 | Area | Command | Result |
 |---|---|---|
 | Contracts | `cd contracts && forge build && forge test` | compiles; 11 passed, 0 failed, 2 skipped (fork tests skip cleanly without `ARBITRUM_ONE_RPC_URL`) |
+| Deployment on Arbitrum Sepolia, 2026-10-04 | `bash scripts/deploy.sh sepolia` | factory `0x3346D96f88122eC3c7B50E50120789ECA21bdcf6` and implementation `0xA0A7F454142905f992c58CC31d0a65cdc29B2633` deployed; Arbiscan: "Pass - Verified" for both; keeper `0x54B2E69fB80bF32e26A6f64b437406bEc95f8363` |
 | Fork tests (T2), builder machine 2026-10-02 | `ARBITRUM_ONE_RPC_URL=https://arb1.arbitrum.io/rpc FORK_ERC4626_VAULT=0x7e97fa6893871A2751B5fE961978DCCb2c201E65 forge test --match-contract ForkExits -vv` | 2 passed, 0 failed, 0 skipped: real Aave V3 exit (4,999.999998 USDC out of 5,000) and real Morpho Gauntlet USDC Core exit (9,999.999998 USDC out of 10,000) |
 | Database on Supabase (session pooler, Postgres 17.11), 2026-10-02 | store.Open with `server/.env` | migrations 001 and 002 applied, 16/16 tables with row-level security, write/read round trip ok |
 | Server | `cd server && go build ./... && go vet ./... && gofmt -l .` | clean, no output |
@@ -112,7 +113,7 @@ Also exercised by the agents that built each part (see commit messages): `exit_h
 ### Not done or not verifiable in the cloud
 
 - **Arbitrum One fork demo** (`scripts/demo-fork.sh`, `heimdalld demo-seed`, fast drain against a real Morpho vault): written, not run. The partial-then-complete exit is tuned on the mock vault; on a real vault the partial exit only shows if the configured `sim.drainers` hold enough shares to pull available liquidity below Ada's position. Tune the drainer list if the exit completes in one go.
-- **Deployments** on Arbitrum Sepolia / One: script ready (`scripts/deploy.sh`), not run.
+- **Arbitrum One deployment**: script ready (`bash scripts/deploy.sh one`), not run (optional, experimental and unaudited).
 - **Real Telegram and Resend delivery**: code verified against local stubs only.
 - **Backtest (TMX)**: the replay command exists (`heimdalld backtest`, docs/api.md §8) but no data was fetched (needs an archive RPC). Per specs N7 the Backtest page stays hidden until a real data file exists.
 - `docker build` of `server/` and `web/`.
