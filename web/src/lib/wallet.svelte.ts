@@ -125,6 +125,15 @@ class WalletStore {
 		this.connecting = true;
 		this.notice = '';
 		try {
+			// After Disconnect, ask for permissions again so the wallet shows its account picker
+			// (lets the user pick a different account). Wallets without EIP-2255 skip this.
+			if (storageGet(DISCONNECT_KEY) === '1') {
+				await this.provider
+					.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] })
+					.catch((e: { code?: number }) => {
+						if (e?.code === 4001) throw e;
+					});
+			}
 			const accounts = (await this.provider.request({ method: 'eth_requestAccounts' })) as string[];
 			this.setAccounts(accounts);
 			await this.readChain();
@@ -139,11 +148,15 @@ class WalletStore {
 		}
 	}
 
-	/** Injected wallets cannot be disconnected from a page, so Heimdall just forgets the address. */
+	/** Forgets the address and, where the wallet supports it (MetaMask), revokes this site's access,
+	 *  so the next Connect shows the account picker. */
 	disconnect() {
 		this.address = null;
 		this.notice = '';
 		storageSet(DISCONNECT_KEY, '1');
+		void this.provider
+			?.request({ method: 'wallet_revokePermissions', params: [{ eth_accounts: {} }] })
+			.catch(() => {});
 	}
 
 	async switchNetwork() {
