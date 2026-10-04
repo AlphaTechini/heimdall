@@ -413,7 +413,7 @@ func (a *API) positions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p.WalletPositionTokens, p.WalletAmount = wt.String(), wa.String()
-		gt := new(big.Int)
+		gt, guardedAssets := new(big.Int), new(big.Int)
 		if exists {
 			gt, err = a.Chain.Uint(ctx, &chain.GuardABI, guard, nil, "held", t.PositionType(), t.Addr())
 			if err != nil {
@@ -426,6 +426,7 @@ func (a *API) positions(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			p.GuardedPositionTokens, p.GuardedAmount = gt.String(), ga.String()
+			guardedAssets = ga
 			ex, err := a.Chain.Uint(ctx, &chain.GuardABI, guard, nil, "exitable", t.PositionType(), t.Addr())
 			if err != nil {
 				a.rpcErr(w, err)
@@ -450,7 +451,8 @@ func (a *API) positions(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case exists && a.Executor.Active(guard, t.ID):
 			p.Status = "exiting"
-		case gt.Sign() > 0:
+		// Shares worth 0 of the asset are rounding dust a vault leaves after a full exit.
+		case gt.Sign() > 0 && (guardedAssets.Sign() > 0 || p.LastExit == nil):
 			p.Status = "guarded"
 		case p.LastExit != nil && p.LastExit.Status != "failed":
 			p.Status = "exited"
