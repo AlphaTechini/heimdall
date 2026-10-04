@@ -25,6 +25,17 @@
 		pending: 'Waiting to be mined',
 		replaced: 'Replaced by a higher tip'
 	};
+	// remaining and burned are position-token units (vault shares); amountOut is the asset.
+	// Price what is left at this transaction's own redemption rate; hide it when there is none.
+	function leftover(tx: Exit['txs'][number]): string | null {
+		try {
+			const burned = BigInt(tx.burned || '0');
+			if (burned === 0n) return null;
+			return ((BigInt(tx.remaining || '0') * BigInt(tx.amountOut || '0')) / burned).toString();
+		} catch {
+			return null;
+		}
+	}
 	const blocks = $derived(
 		exit.endBlock === null
 			? `${exit.startBlock}, still running`
@@ -69,7 +80,9 @@
 				<li class="flex flex-wrap items-baseline gap-x-5 gap-y-0.5 py-2 tabular">
 					<span>Block {tx.block}</span>
 					<span>{amount(tx.amountOut)} out</span>
-					<span>{amount(tx.remaining)} left</span>
+					{#if leftover(tx) !== null}
+						<span>{amount(leftover(tx) as string)} left</span>
+					{/if}
 					<span>Tip {formatUsd(tx.tipUsd)}</span>
 					<span class="text-granite-dark">{RESULT[tx.result] ?? tx.result}</span>
 					<ExplorerLink link={txLink(tx.hash)}>View transaction</ExplorerLink>
