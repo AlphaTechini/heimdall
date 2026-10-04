@@ -345,17 +345,35 @@ func (a *API) tx(w http.ResponseWriter, r *http.Request) {
 // ---- positions ----
 
 type position struct {
-	TargetID              string         `json:"targetId"`
-	Status                string         `json:"status"`
-	WalletAmount          string         `json:"walletAmount"`
-	WalletPositionTokens  string         `json:"walletPositionTokens"`
-	GuardedAmount         string         `json:"guardedAmount"`
-	GuardedPositionTokens string         `json:"guardedPositionTokens"`
-	ExitableAmount        string         `json:"exitableAmount"`
-	ReturnedAmount        string         `json:"returnedAmount"`
-	Severity              string         `json:"severity"`
-	Policy                *policy.Policy `json:"policy"`
-	LastExit              *store.Exit    `json:"lastExit"`
+	TargetID              string `json:"targetId"`
+	Status                string `json:"status"`
+	WalletAmount          string `json:"walletAmount"`
+	WalletPositionTokens  string `json:"walletPositionTokens"`
+	GuardedAmount         string `json:"guardedAmount"`
+	GuardedPositionTokens string `json:"guardedPositionTokens"`
+	ExitableAmount        string `json:"exitableAmount"`
+	ReturnedAmount        string `json:"returnedAmount"`
+	// What the wallet could withdraw from the protocol right now (null when unknown).
+	WalletWithdrawable *string        `json:"walletWithdrawable"`
+	Severity           string         `json:"severity"`
+	Policy             *policy.Policy `json:"policy"`
+	LastExit           *store.Exit    `json:"lastExit"`
+}
+
+// walletWithdrawable is what owner could take out of the protocol right now: the vault's
+// maxWithdraw for ERC-4626, and for Aave the smaller of the balance and the reserve's cash.
+func (a *API) walletWithdrawable(r *http.Request, t *config.Target, owner common.Address, held *big.Int) (*big.Int, error) {
+	if t.IsAave() {
+		cash, err := a.Chain.BalanceOf(r.Context(), t.AssetAddr(), t.PositionToken(), nil)
+		if err != nil {
+			return nil, err
+		}
+		if cash.Cmp(held) < 0 {
+			return cash, nil
+		}
+		return held, nil
+	}
+	return a.Chain.Uint(r.Context(), &chain.ERC4626ABI, t.Addr(), nil, "maxWithdraw", owner)
 }
 
 // toAssets converts position tokens to underlying units (ERC-4626 convertToAssets; Aave is 1:1).
@@ -413,6 +431,12 @@ func (a *API) positions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p.WalletPositionTokens, p.WalletAmount = wt.String(), wa.String()
+		if wt.Sign() > 0 {
+			if ww, err := a.walletWithdrawable(r, t, addr, wa); err == nil {
+				v := ww.String()
+				p.WalletWithdrawable = &v
+			}
+		}
 		gt, guardedAssets := new(big.Int), new(big.Int)
 		if exists {
 			gt, err = a.Chain.Uint(ctx, &chain.GuardABI, guard, nil, "held", t.PositionType(), t.Addr())

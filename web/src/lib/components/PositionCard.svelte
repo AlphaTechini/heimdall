@@ -36,6 +36,22 @@
 		}
 	});
 
+	// Unprotected only: how much of it could come out right now. Under 1% means stuck.
+	const withdrawable = $derived(
+		position.status === 'unprotected' && position.walletWithdrawable !== null
+			? position.walletWithdrawable
+			: null
+	);
+	const stuck = $derived.by(() => {
+		if (withdrawable === null) return false;
+		try {
+			const held = BigInt(position.walletAmount || '0');
+			return held > 0n && BigInt(withdrawable) * 100n < held;
+		} catch {
+			return false;
+		}
+	});
+
 	const actions = createGuardActions(() => target);
 	const toggle = actions.toggle;
 	const withdraw = actions.withdraw;
@@ -73,6 +89,20 @@
 			<p class="mt-2 text-sm text-granite-dark">
 				{shown.note}{returnedNote}
 			</p>
+			{#if withdrawable !== null}
+				<p class="mt-3 flex flex-wrap items-baseline gap-x-2 text-sm">
+					<span class="text-granite-dark">Withdrawable now</span>
+					<span class="font-semibold tabular {stuck ? 'text-ember-dark' : ''}">
+						{formatAmount(withdrawable, target.assetDecimals)}
+						{target.assetSymbol}
+					</span>
+				</p>
+				{#if stuck}
+					<p class="mt-1 text-sm font-medium text-ember-dark">
+						Stuck: the vault has no cash to pay this out.
+					</p>
+				{/if}
+			{/if}
 		</div>
 
 		{#if position.status !== 'exited'}

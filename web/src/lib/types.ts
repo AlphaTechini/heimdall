@@ -93,6 +93,8 @@ export interface Position {
 	guardedPositionTokens: string;
 	exitableAmount: string;
 	returnedAmount: string;
+	/** What the wallet could withdraw from the protocol right now; null when unknown. */
+	walletWithdrawable: string | null;
 	severity: Severity;
 	policy: Policy | null;
 	lastExit: Exit | null;
