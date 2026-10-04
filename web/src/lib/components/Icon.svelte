@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Small inline icons (stroke, currentColor). Purely visual; always paired with text.
-	type Name = 'info' | 'check' | 'alert' | 'shield' | 'external' | 'lock' | 'close' | 'chevron';
+	type Name =
+		'info' | 'check' | 'alert' | 'shield' | 'external' | 'lock' | 'close' | 'chevron' | 'bell';
 	let { name, size = 16 }: { name: Name; size?: number } = $props();
 </script>
 
@@ -37,5 +38,9 @@
 		<path d="M6 6l12 12" /><path d="M18 6L6 18" />
 	{:else if name === 'chevron'}
 		<path d="M6 9l6 6 6-6" />
+	{:else if name === 'bell'}
+		<path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z" /><path
+			d="M10 20a2.2 2.2 0 0 0 4 0"
+		/>
 	{/if}
 </svg>

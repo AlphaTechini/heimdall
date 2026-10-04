@@ -197,7 +197,11 @@
 		delays an exit.
 	</p>
 
-	<section class="mt-8 max-w-2xl panel px-6 py-6 sm:px-7" aria-labelledby="{uid}-tg">
+	<section
+		id="telegram"
+		class="mt-8 max-w-2xl scroll-mt-6 panel px-6 py-6 sm:px-7"
+		aria-labelledby="{uid}-tg"
+	>
 		<h2 id="{uid}-tg" class="text-xl font-semibold">Telegram</h2>
 		{#if telegramOff}
 			<p class="mt-2 text-sm text-granite-dark">
@@ -265,7 +269,11 @@
 		{/if}
 	</section>
 
-	<section class="mt-6 max-w-2xl panel px-6 py-6 sm:px-7" aria-labelledby="{uid}-em">
+	<section
+		id="email"
+		class="mt-6 max-w-2xl scroll-mt-6 panel px-6 py-6 sm:px-7"
+		aria-labelledby="{uid}-em"
+	>
 		<h2 id="{uid}-em" class="text-xl font-semibold">Email</h2>
 		{#if emailOff}
 			<p class="mt-2 text-sm">

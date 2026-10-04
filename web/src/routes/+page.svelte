@@ -11,6 +11,7 @@
 	import PositionCard from '$lib/components/PositionCard.svelte';
 	import ProtectPanel from '$lib/components/ProtectPanel.svelte';
 	import WalletNotice from '$lib/components/WalletNotice.svelte';
+	import AlertsPrompt from '$lib/components/AlertsPrompt.svelte';
 	import { live } from '$lib/live.svelte';
 
 	const feed = new ActivityFeed(10, true);
@@ -161,6 +162,7 @@
 				{#if wallet.issue}
 					<WalletNotice />
 				{/if}
+				<AlertsPrompt />
 				{#each cards as { position, target } (position.targetId)}
 					<PositionCard {target} {position} onprotect={(t) => (protecting = t)} />
 				{/each}
