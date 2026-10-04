@@ -26,7 +26,7 @@
 	});
 </script>
 
-<div class="relative overflow-hidden px-5 py-4 sm:px-6 sm:py-5 {styles[tone]}">
+<div class="relative overflow-hidden px-6 pt-6 pb-5 sm:px-7 {styles[tone]}">
 	{#if sweeping}
 		<span
 			class="sweep pointer-events-none absolute inset-y-0 left-0 w-1/5 bg-white/30"
@@ -34,11 +34,11 @@
 			onanimationend={() => (sweeping = false)}
 		></span>
 	{/if}
-	<p class="text-[2.5rem] display leading-none sm:text-5xl" role="status" aria-live="polite">
+	<p class="text-[2.75rem] display sm:text-[3.5rem]" role="status" aria-live="polite">
 		{word}
 	</p>
 	{#if children}
-		<div class="mt-2 text-sm">{@render children()}</div>
+		<div class="mt-3 max-w-[60ch] text-[0.925rem] leading-snug">{@render children()}</div>
 	{/if}
 </div>
 

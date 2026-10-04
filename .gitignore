@@ -8,3 +8,8 @@ config/targets.local.json
 # Local-only guides (never committed)
 docs/FINAL_STEPS.md
 docs/VIDEO_PLAN.md
+
+# Locally installed agent skills
+.agents/
+skills-lock.json
+.claude/skills/

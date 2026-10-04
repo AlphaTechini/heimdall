@@ -4,20 +4,22 @@
 @plugin '@tailwindcss/typography';
 
 /*
- * Heimdall design tokens (docs/UI_UX.md section 2).
- * Contrast (WCAG 2.x, computed): granite-dark on frost 5.0:1, on white 5.6:1;
- * white on calm-dark 5.3:1; ink on amber 4.7:1; white on ember 5.8:1; white on fjord 6.8:1.
- * The spec's calm (#3E8E6E) and granite (#6B7C86) fail AA for small text, so they only draw
- * marks and borders; text and the calm band use the darker variants.
+ * Heimdall design tokens. Concept: the watchtower at night (dark ink header), the field in
+ * daylight (cool, bright working surface). The one bold element is the horn band.
+ * Token names are kept from the first version so every page picks up the new values.
+ * Contrast (WCAG 2.x, computed): ink on white 15.9:1; granite-dark (slate) on white 5.9:1,
+ * on frost 5.4:1; white on ink 15.9:1; white on calm-dark 5.3:1; ink on amber 5.0:1;
+ * white on ember 5.8:1; white on fjord 7.2:1; nav-muted on ink 7.4:1.
  */
 @theme {
 	--font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
 
-	--color-frost: #eef3f5;
-	--color-ink: #1b2a33;
-	--color-granite: #6b7c86;
-	--color-granite-dark: #5a6a74;
-	--color-fjord: #1f5f8b;
+	--color-frost: #f2f4f5; /* glacier: page background */
+	--color-ink: #15232d; /* text, header, primary buttons */
+	--color-ink-2: #22343f; /* primary button hover */
+	--color-granite: #9aa7af; /* marks and strong borders only */
+	--color-granite-dark: #56656f; /* slate: secondary text */
+	--color-fjord: #1e5b85; /* links, focus, "Home safe" */
 	--color-fjord-dark: #174a6c;
 	--color-calm: #3e8e6e;
 	--color-calm-dark: #2e7859;
@@ -25,7 +27,9 @@
 	--color-amber-dark: #8a5a00;
 	--color-ember: #b8372b;
 	--color-ember-dark: #9e2f24;
-	--color-line: #cfd9de;
+	--color-line: #dce2e6; /* rule: borders and dividers */
+	--color-well: #f7f9fa; /* inset surfaces inside cards */
+	--color-nav: #a9b8c2; /* inactive nav text on ink */
 
 	--breakpoint-xs: 30rem;
 }
@@ -36,24 +40,39 @@
 		color: var(--color-ink);
 		font-family: var(--font-sans);
 		-webkit-text-size-adjust: 100%;
+		scrollbar-color: #b9c4cb var(--color-frost);
+		caret-color: var(--color-fjord);
 	}
 	body {
 		background: var(--color-frost);
 		min-height: 100dvh;
-		line-height: 1.5;
+		line-height: 1.55;
 		font-variation-settings: normal;
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+	::selection {
+		background: #cfe1ee;
+		color: var(--color-ink);
+	}
+	h1,
+	h2,
+	h3 {
+		letter-spacing: -0.02em;
+		text-wrap: balance;
 	}
 	:where(a) {
 		color: var(--color-fjord);
 		text-underline-offset: 3px;
+		text-decoration-thickness: 1px;
 	}
 	:where(a:hover) {
 		color: var(--color-fjord-dark);
 	}
 	:focus-visible {
-		outline: 3px solid var(--color-fjord);
+		outline: 2px solid var(--color-fjord);
 		outline-offset: 2px;
-		border-radius: 2px;
+		border-radius: 4px;
 	}
 	/* The forms plugin swaps outlines for rings; keep one consistent visible focus style. */
 	[type='text']:focus,
@@ -62,14 +81,21 @@
 	select:focus,
 	[type='radio']:focus,
 	[type='checkbox']:focus {
-		outline: 3px solid var(--color-fjord);
+		outline: 2px solid var(--color-fjord);
 		outline-offset: 2px;
 		--tw-ring-shadow: 0 0 #0000;
 		border-color: var(--color-fjord);
 	}
+	[type='text'],
+	[type='email'],
+	[type='number'],
+	select {
+		border-radius: 10px;
+		border-color: #c5ced4;
+	}
 	[type='radio']:checked,
 	[type='checkbox']:checked {
-		color: var(--color-fjord);
+		color: var(--color-ink);
 	}
 	dialog {
 		color: var(--color-ink);
@@ -90,18 +116,78 @@
 	font-variant-numeric: tabular-nums;
 }
 
-/* Expanded width, heavy weight: page titles and the horn band's status word. */
+/* Expanded width, heavy weight: only the wordmark and the horn band's status word. */
 @utility display {
 	font-stretch: 125%;
 	font-weight: 800;
-	letter-spacing: -0.01em;
-	line-height: 1.1;
+	letter-spacing: -0.02em;
+	line-height: 1;
+}
+
+/* Page title: normal width, firm weight, tight tracking. */
+@utility title {
+	font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem);
+	font-weight: 650;
+	letter-spacing: -0.03em;
+	line-height: 1.15;
+}
+
+/* Buttons. Primary is ink (the watchtower), secondary is a quiet outline. */
+@utility btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	border-radius: 10px;
+	padding: 0.625rem 1.125rem;
+	font-weight: 560;
+	font-size: 0.95rem;
+	line-height: 1.25;
+	border: 1px solid transparent;
+	transition:
+		background-color 150ms ease-out,
+		border-color 150ms ease-out,
+		color 150ms ease-out;
+	&:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
+	}
+}
+@utility btn-primary {
+	background: var(--color-ink);
+	color: #fff;
+	&:hover:not(:disabled) {
+		background: var(--color-ink-2);
+		color: #fff;
+	}
+}
+@utility btn-secondary {
+	background: #fff;
+	color: var(--color-ink);
+	border-color: #c5ced4;
+	&:hover:not(:disabled) {
+		border-color: var(--color-granite);
+		background: var(--color-well);
+		color: var(--color-ink);
+	}
+}
+@utility btn-sm {
+	padding: 0.375rem 0.75rem;
+	font-size: 0.875rem;
+	border-radius: 8px;
+}
+
+/* The one container style: white surface, hairline rule, no shadow. */
+@utility panel {
+	background: #fff;
+	border: 1px solid var(--color-line);
+	border-radius: 14px;
 }
 
 /* Loading placeholder: static blocks, no shimmer (nothing animates by itself). */
 @utility skeleton {
-	background: #dbe4e8;
-	border-radius: 4px;
+	background: #e3e8eb;
+	border-radius: 6px;
 }
 
 @keyframes horn-sweep {

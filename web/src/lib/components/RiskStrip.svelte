@@ -51,23 +51,26 @@
 				<li>
 					<button
 						type="button"
-						class="block h-full w-full rounded-md border border-line bg-frost text-left hover:border-granite"
+						class="block h-full w-full rounded-xl border border-line bg-well px-3.5 py-3 text-left transition-colors hover:border-granite aria-expanded:border-ink aria-expanded:bg-white"
 						aria-expanded={expanded === info.id}
 						aria-controls="{uid}-detail"
 						title={info.tooltip}
 						onclick={() => (expanded = expanded === info.id ? null : info.id)}
 					>
-						<span class="block h-1 rounded-t-md {LEVEL_BAR[level]}"></span>
-						<span class="block px-3 py-2">
+						<span class="block">
 							<span class="block text-sm font-medium">{info.label}</span>
-							<span class="block text-sm text-granite-dark tabular">
+							<span class="mt-0.5 block text-sm text-granite-dark tabular">
 								{#if reading && level !== 'unavailable'}
 									{formatReading(reading.value)} {reading.unit}
 								{:else}
 									No reading
 								{/if}
 							</span>
-							<span class="block text-sm font-semibold">{LEVEL_TEXT[level]}</span>
+							<span class="mt-2 flex items-center gap-1.5 text-sm font-semibold">
+								<span class="size-2 shrink-0 rounded-full {LEVEL_BAR[level]}" aria-hidden="true"
+								></span>
+								{LEVEL_TEXT[level]}
+							</span>
 						</span>
 					</button>
 				</li>
@@ -97,22 +100,17 @@
 		</p>
 	{:else if error}
 		<div
-			class="flex flex-wrap items-center gap-3 rounded-md border border-line bg-frost px-3 py-3 text-sm"
+			class="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-well px-4 py-3 text-sm"
 		>
 			<p class="min-w-0 flex-1 basis-56">{error}</p>
-			<button
-				type="button"
-				class="rounded-md border border-fjord px-3 py-1.5 font-medium text-fjord hover:bg-white disabled:opacity-60"
-				disabled={retrying}
-				onclick={retry}
-			>
+			<button type="button" class="btn btn-sm btn-secondary" disabled={retrying} onclick={retry}>
 				{retrying ? 'Trying again' : 'Try again'}
 			</button>
 		</div>
 	{:else}
 		<div class="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-hidden="true">
 			{#each [...Array(infos.length || 6).keys()] as i (i)}
-				<div class="h-[5.25rem] skeleton"></div>
+				<div class="h-[5.75rem] skeleton rounded-xl"></div>
 			{/each}
 		</div>
 		<p class="sr-only" role="status">Loading risk signals</p>
