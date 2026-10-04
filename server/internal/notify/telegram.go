@@ -133,10 +133,12 @@ func (t *Telegram) Poll(ctx context.Context, onStart func(ctx context.Context, c
 			text := strings.TrimSpace(u.Message.Text)
 			code, ok := strings.CutPrefix(text, "/start")
 			code = strings.TrimSpace(code)
+			if !ok && isLinkCode(text) {
+				// Settings also says "send this code to the bot": accept the code on its own.
+				code, ok = text, true
+			}
 			if !ok || code == "" {
-				if ok {
-					_ = t.SendText(ctx, u.Message.Chat.ID, "Open Heimdall > Settings > Link Telegram to get a link code.")
-				}
+				_ = t.SendText(ctx, u.Message.Chat.ID, "Open Heimdall > Settings > Connect Telegram, then send the 6-character code shown there.")
 				continue
 			}
 			reply := onStart(ctx, code, u.Message.Chat.ID, u.Message.From.Username)
@@ -145,4 +147,17 @@ func (t *Telegram) Poll(ctx context.Context, onStart func(ctx context.Context, c
 			}
 		}
 	}
+}
+
+// isLinkCode reports whether a message looks like a Settings link code (6 letters or digits).
+func isLinkCode(s string) bool {
+	if len(s) != 6 {
+		return false
+	}
+	for _, r := range s {
+		if !(r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9') {
+			return false
+		}
+	}
+	return true
 }
