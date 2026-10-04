@@ -8,13 +8,13 @@
 	let width = $state(720);
 	const W = $derived(Math.max(300, width));
 	const H = 300;
-	const PAD = { l: 44, r: 16, t: 20, b: 34 };
+	const PAD = { l: 44, r: 16, t: 44, b: 34 };
 	// Tokens are told apart by color and line style (never color alone). None of these is a severity color.
 	const STYLES = [
-		{ color: '#1f5f8b', dash: '' },
+		{ color: 'var(--color-fjord)', dash: '' },
 		{ color: '#6b4e9b', dash: '7 4' },
 		{ color: '#157a8c', dash: '2 3' },
-		{ color: '#5a6a74', dash: '10 3 2 3' }
+		{ color: 'var(--color-granite-dark)', dash: '10 3 2 3' }
 	];
 
 	const tokens = $derived(data.tokens.length > 0 ? data.tokens : Object.keys(data.peakBalances));
@@ -63,10 +63,10 @@
 	const markers = $derived(
 		[
 			data.firstWarningBlock !== null
-				? { block: data.firstWarningBlock, label: 'Warning', color: '#c9831a' }
+				? { block: data.firstWarningBlock, label: 'Warning', color: 'var(--color-amber)' }
 				: null,
 			data.firstCriticalBlock !== null
-				? { block: data.firstCriticalBlock, label: 'Critical', color: '#b8372b' }
+				? { block: data.firstCriticalBlock, label: 'Critical', color: 'var(--color-ember)' }
 				: null
 		].filter((m): m is { block: number; label: string; color: string } => m !== null)
 	);
@@ -99,7 +99,7 @@
 		return `Block ${pt.block}, ${formatClock(pt.time)}: ${shares.join(' and ')} of peak. Risk: ${risk}.`;
 	});
 
-	const label = (token: string) => shortAddress(token);
+	const label = (token: string) => data.tokenSymbols?.[token] ?? `Token ${shortAddress(token)}`;
 	const lowest = (s: (typeof series)[number]) => Math.min(...s.points.map((p) => p.pct));
 </script>
 
@@ -118,7 +118,7 @@
 						stroke-dasharray={s.style.dash}
 					/>
 				</svg>
-				<span>{tokens.length > 1 ? `Token ${label(s.token)}` : 'Balance in the pool'}</span>
+				<span>{tokens.length > 1 ? label(s.token) : 'Balance in the pool'}</span>
 				<span class="text-granite-dark">lowest {formatNumber(lowest(s), 1)}% of its peak</span>
 			</li>
 		{/each}
@@ -140,29 +140,36 @@
 				x2={W - PAD.r}
 				y1={yOf(tick)}
 				y2={yOf(tick)}
-				stroke="#cfd9de"
+				stroke="var(--color-line)"
 				stroke-width="1"
 			/>
-			<text x={PAD.l - 8} y={yOf(tick) + 4} font-size="12" text-anchor="end" fill="#5a6a74"
-				>{tick}%</text
+			<text
+				x={PAD.l - 8}
+				y={yOf(tick) + 4}
+				font-size="12"
+				text-anchor="end"
+				fill="var(--color-granite-dark)">{tick}%</text
 			>
 		{/each}
 		{#each markers as m (m.label)}
 			<line
 				x1={xOf(m.block)}
 				x2={xOf(m.block)}
-				y1={PAD.t - 6}
+				y1={m.label === 'Critical' ? PAD.t - 22 : PAD.t - 38}
 				y2={H - PAD.b}
 				stroke={m.color}
 				stroke-width="1.5"
 				stroke-dasharray="5 3"
 			/>
 			<text
-				x={Math.min(xOf(m.block) + 6, W - 150)}
-				y={PAD.t + (m.label === 'Critical' ? 14 : 0)}
+				x={m.label === 'Critical'
+					? Math.min(xOf(m.block) + 6, W - 150)
+					: Math.max(xOf(m.block) - 6, PAD.l + 180)}
+				y={m.label === 'Critical' ? PAD.t - 10 : PAD.t - 26}
+				text-anchor={m.label === 'Critical' ? 'start' : 'end'}
 				font-size="12"
-				fill="#1b2a33"
-				stroke="#eef3f5"
+				fill="var(--color-ink)"
+				stroke="#fff"
 				stroke-width="4"
 				paint-order="stroke"
 			>
@@ -185,12 +192,12 @@
 				x2={xOf(hoverBlock)}
 				y1={PAD.t}
 				y2={H - PAD.b}
-				stroke="#6b7c86"
+				stroke="var(--color-granite)"
 				stroke-width="1"
 			/>
 		{/if}
-		<text x={PAD.l} y={H - 10} font-size="12" fill="#5a6a74">Block {first}</text>
-		<text x={W - PAD.r} y={H - 10} font-size="12" text-anchor="end" fill="#5a6a74"
+		<text x={PAD.l} y={H - 10} font-size="12" fill="var(--color-granite-dark)">Block {first}</text>
+		<text x={W - PAD.r} y={H - 10} font-size="12" text-anchor="end" fill="var(--color-granite-dark)"
 			>Block {last}</text
 		>
 	</svg>

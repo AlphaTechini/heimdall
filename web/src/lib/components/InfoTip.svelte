@@ -25,7 +25,7 @@
 	<span
 		id="{id}-tip"
 		role="tooltip"
-		class="absolute top-full left-0 z-20 mt-1 w-64 rounded-md bg-ink px-3 py-2 text-sm font-normal text-white {open ||
+		class="absolute top-full left-0 z-20 mt-1 w-64 rounded-[10px] bg-ink px-3 py-2 text-sm font-normal text-white shadow-[0_24px_48px_-16px_rgba(21,35,45,0.35)] {open ||
 		hover
 			? 'block'
 			: 'hidden'}"

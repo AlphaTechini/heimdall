@@ -37,7 +37,7 @@
 
 <a
 	href="#main"
-	class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2"
+	class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-[10px] focus:border focus:border-line focus:bg-white focus:px-4 focus:py-2.5 focus:font-medium focus:text-ink"
 >
 	Skip to content
 </a>

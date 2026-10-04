@@ -151,25 +151,27 @@
 
 <svelte:head><title>Settings - Heimdall</title></svelte:head>
 
-<h1 class="text-3xl display sm:text-4xl">Settings</h1>
+<h1 class="title">Settings</h1>
 
 {#if !wallet.connected}
-	<p class="mt-2 max-w-prose">Connect your wallet to manage alerts and your default policy.</p>
-	<div class="mt-4"><WalletNotice /></div>
+	<p class="mt-3 max-w-[58ch] text-[1.0625rem] text-granite-dark">
+		Connect your wallet to manage alerts and your default policy.
+	</p>
+	<div class="mt-6"><WalletNotice /></div>
 {:else if wallet.issue?.kind === 'wrong_network' && !auth.signedIn}
-	<p class="mt-2 max-w-prose">
+	<p class="mt-3 max-w-[58ch] text-[1.0625rem] text-granite-dark">
 		Signing in works on any network, but your wallet should be on the right one first.
 	</p>
-	<div class="mt-4"><WalletNotice /></div>
+	<div class="mt-6"><WalletNotice /></div>
 {:else if !auth.signedIn}
-	<p class="mt-2 max-w-prose">
+	<p class="mt-3 max-w-[58ch] text-[1.0625rem] text-granite-dark">
 		Sign in to change alerts and your default policy. You sign a message in your wallet. It proves
 		the wallet is yours and costs no gas.
 	</p>
-	<div class="mt-4">
+	<div class="mt-6">
 		<button
 			type="button"
-			class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
+			class="btn btn-primary"
 			disabled={signIn.busy}
 			onclick={() => signIn.run()}
 		>
@@ -190,15 +192,15 @@
 		<ErrorState title="Settings did not load" message={error} onretry={loadSettings} />
 	</div>
 {:else if settings}
-	<p class="mt-2 max-w-prose text-granite-dark">
+	<p class="mt-3 max-w-[58ch] text-[1.0625rem] text-granite-dark">
 		Heimdall sends alerts for Warning, Critical, and every step of an exit. A failed alert never
 		delays an exit.
 	</p>
 
-	<section class="mt-10 max-w-2xl" aria-labelledby="{uid}-tg">
-		<h2 id="{uid}-tg" class="text-2xl display">Telegram</h2>
+	<section class="mt-8 max-w-2xl panel px-6 py-6 sm:px-7" aria-labelledby="{uid}-tg">
+		<h2 id="{uid}-tg" class="text-xl font-semibold">Telegram</h2>
 		{#if telegramOff}
-			<p class="mt-2 text-sm">
+			<p class="mt-2 text-sm text-granite-dark">
 				Telegram alerts are not set up on this server. The server needs a Telegram bot token before
 				you can connect.
 			</p>
@@ -210,7 +212,7 @@
 			<div class="mt-3 flex flex-wrap gap-3">
 				<button
 					type="button"
-					class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+					class="btn btn-secondary"
 					disabled={testTelegram.busy || disconnectTelegram.busy}
 					onclick={() => testTelegram.run()}
 				>
@@ -218,7 +220,7 @@
 				</button>
 				<button
 					type="button"
-					class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+					class="btn btn-secondary"
 					disabled={testTelegram.busy || disconnectTelegram.busy}
 					onclick={() => disconnectTelegram.run()}
 				>
@@ -232,7 +234,7 @@
 			<div class="mt-3">
 				<button
 					type="button"
-					class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
+					class="btn btn-primary"
 					disabled={telegramOff || connectTelegram.busy}
 					onclick={() => connectTelegram.run()}
 				>
@@ -240,7 +242,7 @@
 				</button>
 			</div>
 			{#if link}
-				<div class="mt-4 border-l-4 border-fjord bg-white px-4 py-3">
+				<div class="mt-4 rounded-xl border border-line bg-well px-4 py-3">
 					<p>
 						Open Telegram and press Start, or send this code to
 						{app.config?.telegramBot ? `@${app.config.telegramBot}` : 'the Heimdall bot'}:
@@ -263,8 +265,8 @@
 		{/if}
 	</section>
 
-	<section class="mt-10 max-w-2xl" aria-labelledby="{uid}-em">
-		<h2 id="{uid}-em" class="text-2xl display">Email</h2>
+	<section class="mt-6 max-w-2xl panel px-6 py-6 sm:px-7" aria-labelledby="{uid}-em">
+		<h2 id="{uid}-em" class="text-xl font-semibold">Email</h2>
 		{#if emailOff}
 			<p class="mt-2 text-sm">
 				Email alerts are not set up on this server. The server needs a Resend API key before you can
@@ -279,12 +281,12 @@
 		<label for="{uid}-email" class="mt-3 block text-sm font-medium">
 			{emailVerified ? 'Use a different address' : 'Email address'}
 		</label>
-		<div class="mt-1 flex max-w-md flex-wrap gap-3">
+		<div class="mt-1.5 flex max-w-md flex-wrap gap-3">
 			<input
 				id="{uid}-email"
 				type="email"
 				autocomplete="email"
-				class="min-w-0 flex-1 basis-56 rounded-md border-granite py-2"
+				class="min-w-0 flex-1 basis-56 rounded-[10px] border-[#c5ced4] py-2.5"
 				bind:value={emailInput}
 				oninput={() => (emailTouched = true)}
 				disabled={emailOff || sendCode.busy}
@@ -292,7 +294,7 @@
 			/>
 			<button
 				type="button"
-				class="rounded-md bg-fjord px-5 py-2 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
+				class="btn btn-primary"
 				disabled={emailOff || sendCode.busy || !emailOk}
 				onclick={() => sendCode.run()}
 			>
@@ -310,21 +312,21 @@
 
 		{#if codeSent}
 			<label for="{uid}-code" class="mt-4 block text-sm font-medium">6-digit code</label>
-			<div class="mt-1 flex max-w-md flex-wrap gap-3">
+			<div class="mt-1.5 flex max-w-md flex-wrap gap-3">
 				<input
 					id="{uid}-code"
 					type="text"
 					inputmode="numeric"
 					autocomplete="one-time-code"
 					maxlength="6"
-					class="w-40 rounded-md border-granite py-2 tabular"
+					class="w-40 rounded-[10px] border-[#c5ced4] py-2.5 tabular"
 					bind:value={code}
 					disabled={verify.busy}
 					aria-describedby="{uid}-code-help"
 				/>
 				<button
 					type="button"
-					class="rounded-md bg-fjord px-5 py-2 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
+					class="btn btn-primary"
 					disabled={verify.busy || !codeOk}
 					onclick={() => verify.run()}
 				>
@@ -343,7 +345,7 @@
 			<div class="mt-4">
 				<button
 					type="button"
-					class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+					class="btn btn-secondary"
 					disabled={emailOff || testEmail.busy}
 					onclick={() => testEmail.run()}
 				>
@@ -354,8 +356,8 @@
 		{/if}
 	</section>
 
-	<section class="mt-10 max-w-2xl" aria-labelledby="{uid}-pol">
-		<h2 id="{uid}-pol" class="text-2xl display">Default policy</h2>
+	<section class="mt-6 max-w-2xl panel px-6 py-6 sm:px-7" aria-labelledby="{uid}-pol">
+		<h2 id="{uid}-pol" class="text-xl font-semibold">Default policy</h2>
 		<p class="mt-2 text-granite-dark">New protected positions start with these choices.</p>
 		<div
 			class="mt-5"
@@ -373,7 +375,7 @@
 		<div class="mt-5">
 			<button
 				type="button"
-				class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
+				class="btn btn-primary"
 				disabled={savePolicy.busy || !policyValid}
 				onclick={() => savePolicy.run()}
 			>

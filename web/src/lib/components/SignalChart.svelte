@@ -108,7 +108,7 @@
 	};
 </script>
 
-<figure class="min-w-0">
+<figure class="min-w-0 panel px-5 py-4">
 	<figcaption class="flex flex-wrap items-baseline justify-between gap-x-3">
 		<span class="font-semibold" title={tooltip}>{label}</span>
 		<span class="text-sm text-granite-dark tabular">
@@ -141,7 +141,7 @@
 				x2={W - PAD.r}
 				y1={H - PAD.b}
 				y2={H - PAD.b}
-				stroke="#cfd9de"
+				stroke="var(--color-line)"
 				stroke-width="1"
 			/>
 			{#if threshold?.warning !== undefined}
@@ -150,11 +150,11 @@
 					x2={W - PAD.r}
 					y1={yOf(threshold.warning)}
 					y2={yOf(threshold.warning)}
-					stroke="#c9831a"
+					stroke="var(--color-amber)"
 					stroke-width="1"
 					stroke-dasharray="4 3"
 				/>
-				<text x={PAD.l} y={yOf(threshold.warning) - 3} font-size="10" fill="#1b2a33">
+				<text x={PAD.l} y={yOf(threshold.warning) - 3} font-size="10" fill="var(--color-ink)">
 					Warning at {formatReading(threshold.warning)}
 				</text>
 			{/if}
@@ -164,11 +164,11 @@
 					x2={W - PAD.r}
 					y1={yOf(threshold.critical)}
 					y2={yOf(threshold.critical)}
-					stroke="#b8372b"
+					stroke="var(--color-ember)"
 					stroke-width="1"
 					stroke-dasharray="4 3"
 				/>
-				<text x={PAD.l} y={yOf(threshold.critical) - 3} font-size="10" fill="#1b2a33">
+				<text x={PAD.l} y={yOf(threshold.critical) - 3} font-size="10" fill="var(--color-ink)">
 					Critical at {formatReading(threshold.critical)}
 				</text>
 			{/if}
@@ -176,21 +176,21 @@
 				<path
 					d={path}
 					fill="none"
-					stroke="#1f5f8b"
+					stroke="var(--color-fjord)"
 					stroke-width="2"
 					stroke-linejoin="round"
 					stroke-linecap="round"
 				/>
 			{:else}
-				<circle cx={samples[0].x} cy={samples[0].y} r="4" fill="#1f5f8b" />
+				<circle cx={samples[0].x} cy={samples[0].y} r="4" fill="var(--color-fjord)" />
 			{/if}
 			{#each flagged as s, i (i)}
 				<circle
 					cx={s.x}
 					cy={s.y}
 					r="4"
-					fill={s.level === 'critical' ? '#b8372b' : '#c9831a'}
-					stroke="#ffffff"
+					fill={s.level === 'critical' ? 'var(--color-ember)' : 'var(--color-amber)'}
+					stroke="#fff"
 					stroke-width="2"
 				/>
 			{/each}
@@ -200,20 +200,28 @@
 					x2={hovered.x}
 					y1={PAD.t}
 					y2={H - PAD.b}
-					stroke="#6b7c86"
+					stroke="var(--color-granite)"
 					stroke-width="1"
 				/>
 				<circle
 					cx={hovered.x}
 					cy={hovered.y}
 					r="4"
-					fill="#1f5f8b"
-					stroke="#ffffff"
+					fill="var(--color-fjord)"
+					stroke="#fff"
 					stroke-width="2"
 				/>
 			{/if}
-			<text x={PAD.l} y={H - 6} font-size="10" fill="#5a6a74">{formatClock(series[0].time)}</text>
-			<text x={W - PAD.r} y={H - 6} font-size="10" text-anchor="end" fill="#5a6a74">
+			<text x={PAD.l} y={H - 6} font-size="10" fill="var(--color-granite-dark)"
+				>{formatClock(series[0].time)}</text
+			>
+			<text
+				x={W - PAD.r}
+				y={H - 6}
+				font-size="10"
+				text-anchor="end"
+				fill="var(--color-granite-dark)"
+			>
 				{formatClock(series[series.length - 1].time)}
 			</text>
 		</svg>

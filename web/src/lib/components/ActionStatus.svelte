@@ -34,7 +34,7 @@
 			{#if action.error.kind === 'wrong_network'}
 				<button
 					type="button"
-					class="rounded-md border border-fjord px-3 py-1.5 font-medium text-fjord hover:bg-white disabled:opacity-60"
+					class="btn btn-sm btn-secondary"
 					disabled={wallet.switching}
 					onclick={() => wallet.switchNetwork()}
 				>
@@ -43,7 +43,7 @@
 			{:else if action.error.kind === 'not_connected'}
 				<button
 					type="button"
-					class="rounded-md border border-fjord px-3 py-1.5 font-medium text-fjord hover:bg-white disabled:opacity-60"
+					class="btn btn-sm btn-secondary"
 					disabled={wallet.connecting}
 					onclick={() => wallet.connect()}
 				>

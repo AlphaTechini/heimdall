@@ -257,7 +257,7 @@ Output file (served as-is by `GET /backtests/{id}`):
 
 ```json
 { "id":"tmx-2026-01", "title":"...", "incident":"tmx-2026-01", "chainId":42161,
-  "mode":"balance", "tokens":["0x..","0x.."], "tokenDecimals":{"0x..":6,"0x..":18},
+  "mode":"balance", "tokens":["0x..","0x.."], "tokenSymbols":{"0x..":"USDC"} (optional, each token's on-chain symbol()), "tokenDecimals":{"0x..":6,"0x..":18},
   "target":"0x.. (vault, or the holder in balance mode)", "asset":"0x.. (first token)", "assetDecimals":6,
   "fromBlock":1, "toBlock":2, "step":1, "generatedAt":"...", "rpcHost":"host only, no key",
   "thresholds": { "S1": {"warning":5,"critical":15}, "...": {} }, "note":"...incl. Source: ...",

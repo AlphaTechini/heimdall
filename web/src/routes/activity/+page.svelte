@@ -22,8 +22,8 @@
 
 <svelte:head><title>Activity - Heimdall</title></svelte:head>
 
-<h1 class="text-3xl display sm:text-4xl">Activity</h1>
-<p class="mt-2 max-w-prose text-granite-dark">
+<h1 class="title">Activity</h1>
+<p class="mt-3 max-w-[58ch] text-[1.0625rem] text-granite-dark">
 	{#if wallet.connected}
 		Checks, risk changes, alerts and exits for your positions, newest first.
 	{:else}
@@ -32,11 +32,11 @@
 	{/if}
 </p>
 
-<div class="mt-6 max-w-sm">
+<div class="mt-8 max-w-sm">
 	<label for="{uid}-filter" class="block text-sm font-medium">Position</label>
 	<select
 		id="{uid}-filter"
-		class="mt-1 w-full rounded-md border-granite bg-white py-2"
+		class="mt-1.5 w-full rounded-[10px] border-[#c5ced4] bg-white py-2.5"
 		bind:value={targetId}
 	>
 		<option value="">All positions</option>
@@ -46,7 +46,7 @@
 	</select>
 </div>
 
-<div class="mt-6 max-w-3xl">
+<div class="mt-6 max-w-3xl panel px-5 py-5">
 	<EventFeedPanel
 		{feed}
 		emptyText={targetId

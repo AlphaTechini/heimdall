@@ -174,15 +174,17 @@
 <p><a href={resolve('/')} class="font-medium">Back to your positions</a></p>
 
 {#if !target}
-	<h1 class="mt-4 text-3xl display">Position not found</h1>
-	<p class="mt-2 max-w-prose">
+	<h1 class="mt-4 title">Position not found</h1>
+	<p class="mt-3 max-w-[58ch] text-[1.0625rem] text-granite-dark">
 		Heimdall does not support a position called "{targetId}". Go back to your positions and pick one
 		from the list.
 	</p>
 {:else if !wallet.connected}
-	<h1 class="mt-4 text-3xl display sm:text-4xl">{target.label}</h1>
-	<p class="mt-2 max-w-prose">Connect your wallet to see this position.</p>
-	<div class="mt-4"><WalletNotice /></div>
+	<h1 class="mt-4 title">{target.label}</h1>
+	<p class="mt-3 max-w-[58ch] text-[1.0625rem] text-granite-dark">
+		Connect your wallet to see this position.
+	</p>
+	<div class="mt-6"><WalletNotice /></div>
 {:else if positions.status === 'loading' || positions.status === 'idle'}
 	<div class="mt-4 max-w-3xl space-y-4" aria-hidden="true">
 		<div class="h-10 w-1/2 skeleton"></div>
@@ -199,14 +201,14 @@
 		/>
 	</div>
 {:else if !position}
-	<h1 class="mt-4 text-3xl display sm:text-4xl">{target.label}</h1>
-	<p class="mt-2 max-w-prose">
+	<h1 class="mt-4 title">{target.label}</h1>
+	<p class="mt-3 max-w-[58ch] text-[1.0625rem] text-granite-dark">
 		Your wallet has no {target.label} position. Deposit into it, then come back.
 	</p>
 {:else}
-	<h1 class="mt-4 text-3xl display sm:text-4xl">{target.label}</h1>
+	<h1 class="mt-4 title">{target.label}</h1>
 
-	<div class="mt-5 max-w-3xl overflow-hidden rounded-lg border border-line bg-white">
+	<div class="mt-6 max-w-3xl overflow-hidden panel">
 		{#if band}
 			<HornBand word={band.word} tone={band.tone}>
 				{#if STATUS_LABEL[position.status] !== band.word}
@@ -217,17 +219,17 @@
 				{/if}
 			</HornBand>
 		{/if}
-		<dl class="grid gap-x-8 gap-y-3 px-5 py-5 tabular sm:grid-cols-2 sm:px-6">
+		<dl class="grid gap-x-8 gap-y-4 px-6 py-6 tabular sm:grid-cols-2 sm:px-7">
 			<div>
 				<dt class="text-sm text-granite-dark">In your Guard</dt>
-				<dd class="text-2xl font-semibold">
+				<dd class="text-2xl font-semibold tracking-[-0.02em]">
 					{formatAmount(position.guardedAmount, target.assetDecimals)}
 					<span class="text-lg font-medium">{target.assetSymbol}</span>
 				</dd>
 			</div>
 			<div>
 				<dt class="text-sm text-granite-dark">Returned to your wallet by exits</dt>
-				<dd class="text-2xl font-semibold">
+				<dd class="text-2xl font-semibold tracking-[-0.02em]">
 					{formatAmount(position.returnedAmount, target.assetDecimals)}
 					<span class="text-lg font-medium">{target.assetSymbol}</span>
 				</dd>
@@ -248,17 +250,17 @@
 			</div>
 		</dl>
 		{#if guarded}
-			<p class="flex items-start gap-2 border-t border-line px-5 py-4 font-medium sm:px-6">
+			<p class="flex items-start gap-2 border-t border-line bg-well px-6 py-4 font-medium sm:px-7">
 				<span class="mt-0.5 text-fjord"><Icon name="shield" size={20} /></span>
 				Heimdall can only send this money back to you.
 			</p>
 		{/if}
 	</div>
 
-	<section class="mt-10 max-w-3xl" aria-labelledby="policy-title">
-		<h2 id="policy-title" class="text-2xl display">Policy</h2>
+	<section class="mt-6 max-w-3xl panel px-6 py-6 sm:px-7" aria-labelledby="policy-title">
+		<h2 id="policy-title" class="text-xl font-semibold">Policy</h2>
 		{#if position.status === 'unprotected'}
-			<p class="mt-2">
+			<p class="mt-2 text-granite-dark">
 				This position is not protected yet. Start from the
 				<a href={resolve('/')}>dashboard</a> and choose Protect.
 			</p>
@@ -284,20 +286,14 @@
 				</p>
 			{/if}
 			<div class="mt-4">
-				<button
-					type="button"
-					class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost"
-					onclick={openEditor}
-				>
-					Edit policy
-				</button>
+				<button type="button" class="btn btn-secondary" onclick={openEditor}> Edit policy </button>
 			</div>
 		{/if}
 	</section>
 
 	{#if guarded || showFeedback}
-		<section class="mt-10 max-w-3xl" aria-labelledby="actions-title">
-			<h2 id="actions-title" class="text-2xl display">Actions</h2>
+		<section class="mt-6 max-w-3xl panel px-6 py-6 sm:px-7" aria-labelledby="actions-title">
+			<h2 id="actions-title" class="text-xl font-semibold">Actions</h2>
 			{#if guarded}
 				<p class="mt-2 text-granite-dark">
 					These are wallet transactions. Only you can send them, and each one takes effect in the
@@ -309,7 +305,7 @@
 				<div class="mt-4 flex flex-wrap gap-3 max-sm:[&>*]:w-full max-sm:[&>a]:text-center">
 					<button
 						type="button"
-						class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
+						class="btn btn-primary"
 						disabled={actions.busy || !!wallet.issue || nothingHeld}
 						onclick={() => actions.exit.run()}
 					>
@@ -317,7 +313,7 @@
 					</button>
 					<button
 						type="button"
-						class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+						class="btn btn-secondary"
 						disabled={actions.busy || !!wallet.issue}
 						onclick={() => actions.pause.run()}
 					>
@@ -325,7 +321,7 @@
 					</button>
 					<button
 						type="button"
-						class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+						class="btn btn-secondary"
 						disabled={actions.busy || !!wallet.issue}
 						onclick={() => actions.toggle.run()}
 					>
@@ -333,7 +329,7 @@
 					</button>
 					<button
 						type="button"
-						class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+						class="btn btn-secondary"
 						disabled={actions.busy || !!wallet.issue || nothingHeld}
 						onclick={() => actions.withdraw.run()}
 					>
@@ -354,7 +350,7 @@
 				<ActionStatus action={actions.withdraw} />
 			</div>
 			{#if guarded}
-				<p class="mt-3 max-w-prose text-sm text-granite-dark">
+				<p class="mt-3 max-w-[60ch] text-sm text-granite-dark">
 					Exit now redeems as much as the vault can pay today and sends it to your wallet. Pause
 					stops Heimdall from exiting for you; your own actions still work.
 				</p>
@@ -363,8 +359,8 @@
 	{/if}
 
 	<section class="mt-10" aria-labelledby="history-title">
-		<h2 id="history-title" class="text-2xl display">Signal history</h2>
-		<p class="mt-2 max-w-prose text-granite-dark">
+		<h2 id="history-title" class="text-xl font-semibold">Signal history</h2>
+		<p class="mt-2 max-w-[60ch] text-granite-dark">
 			What each risk signal read over time. Dashed lines mark where it becomes Warning or Critical.
 		</p>
 		<div class="mt-4">
@@ -402,8 +398,12 @@
 		</div>
 	</section>
 
-	<section id="exits" class="mt-10 max-w-3xl scroll-mt-6" aria-labelledby="exits-title">
-		<h2 id="exits-title" class="text-2xl display">Exit receipts</h2>
+	<section
+		id="exits"
+		class="mt-6 max-w-3xl scroll-mt-6 panel px-6 py-6 sm:px-7"
+		aria-labelledby="exits-title"
+	>
+		<h2 id="exits-title" class="text-xl font-semibold">Exit receipts</h2>
 		<div class="mt-3">
 			{#if exitsStatus === 'loading'}
 				<div class="space-y-3" aria-hidden="true">
@@ -450,7 +450,7 @@
 				<div class="flex flex-wrap gap-3 max-sm:[&>*]:w-full max-sm:[&>a]:text-center">
 					<button
 						type="button"
-						class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
+						class="btn btn-primary"
 						disabled={save.busy || !draftValid || !!wallet.issue}
 						onclick={() => save.run()}
 					>
@@ -458,7 +458,7 @@
 					</button>
 					<button
 						type="button"
-						class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+						class="btn btn-secondary"
 						disabled={save.busy}
 						onclick={() => (editing = false)}
 					>

@@ -21,17 +21,18 @@
 
 	// Marker color only where it means severity or the outcome of an exit.
 	function marker(e: HeimdallEvent): string {
-		if (e.kind === 'exit_complete') return 'border-fjord';
-		if (e.severity === 'critical' || e.kind === 'exit_failed') return 'border-ember';
-		if (e.severity === 'warning') return 'border-amber';
-		return 'border-transparent';
+		if (e.kind === 'exit_complete') return 'bg-fjord';
+		if (e.severity === 'critical' || e.kind === 'exit_failed') return 'bg-ember';
+		if (e.severity === 'warning') return 'bg-amber';
+		return 'bg-granite';
 	}
 </script>
 
 <ol class="divide-y divide-line" aria-live="polite" aria-relevant="additions">
 	{#each events as event (event.id)}
-		<li class="border-l-4 py-3 pl-4 {marker(event)}">
-			<div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+		<li class="py-3">
+			<div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+				<span class="size-2 shrink-0 rounded-full {marker(event)}" aria-hidden="true"></span>
 				<span class="font-semibold">{KIND[event.kind] ?? event.kind}</span>
 				<time
 					class="text-sm text-granite-dark tabular"
@@ -39,8 +40,8 @@
 					title={formatDateTime(event.time)}>{formatClock(event.time)}</time
 				>
 			</div>
-			<p class="mt-0.5 {compact ? 'text-sm' : ''}">{event.message}</p>
-			<p class="mt-0.5 flex flex-wrap gap-x-4 text-sm text-granite-dark tabular">
+			<p class="mt-0.5 pl-5 {compact ? 'text-sm' : ''}">{event.message}</p>
+			<p class="mt-0.5 flex flex-wrap gap-x-4 pl-5 text-sm text-granite-dark tabular">
 				<span>Block {event.block}</span>
 				{#if event.txHash}
 					<ExplorerLink link={txLink(event.txHash)}>View transaction</ExplorerLink>

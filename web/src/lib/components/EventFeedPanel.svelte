@@ -13,7 +13,7 @@
 {#if feed.status === 'loading' && feed.events.length === 0}
 	<div class="space-y-4" aria-hidden="true">
 		{#each [0, 1, 2, 3] as i (i)}
-			<div class="space-y-2 border-l-4 border-line pl-4">
+			<div class="space-y-2">
 				<div class="h-4 w-2/5 skeleton"></div>
 				<div class="h-4 w-full skeleton"></div>
 				<div class="h-3 w-1/4 skeleton"></div>

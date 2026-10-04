@@ -7,9 +7,9 @@
  * Heimdall design tokens. Concept: the watchtower at night (dark ink header), the field in
  * daylight (cool, bright working surface). The one bold element is the horn band.
  * Token names are kept from the first version so every page picks up the new values.
- * Contrast (WCAG 2.x, computed): ink on white 15.9:1; granite-dark (slate) on white 5.9:1,
- * on frost 5.4:1; white on ink 15.9:1; white on calm-dark 5.3:1; ink on amber 5.0:1;
- * white on ember 5.8:1; white on fjord 7.2:1; nav-muted on ink 7.4:1.
+ * Contrast (WCAG 2.x, computed 2026-10-04): ink on white 16.0:1; granite-dark (slate) on white
+ * 6.0:1, on frost 5.5:1, on well 5.7:1; white on ink 16.0:1; white on calm-dark 5.3:1; ink on amber
+ * 5.1:1; white on ember 5.8:1; white on ember-dark 7.3:1; white on fjord 7.3:1; nav on ink 7.9:1.
  */
 @theme {
 	--font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
@@ -86,10 +86,11 @@
 		--tw-ring-shadow: 0 0 #0000;
 		border-color: var(--color-fjord);
 	}
-	[type='text'],
-	[type='email'],
-	[type='number'],
-	select {
+	/* html prefix: the forms plugin's own input rules come later in the build and would win. */
+	html [type='text'],
+	html [type='email'],
+	html [type='number'],
+	html select {
 		border-radius: 10px;
 		border-color: #c5ced4;
 	}

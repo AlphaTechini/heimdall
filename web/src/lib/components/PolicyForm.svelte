@@ -45,9 +45,11 @@
 
 <div class="space-y-6">
 	<fieldset {disabled} class="space-y-2">
-		<legend class="mb-1 font-semibold">When risk is Critical</legend>
+		<legend class="mb-2 font-semibold">When risk is Critical</legend>
 		{#each CRITICAL_OPTIONS as opt (opt.value)}
-			<label class="flex items-start gap-3 py-1">
+			<label
+				class="flex items-start gap-3 rounded-xl border border-line bg-well px-4 py-3 has-[:checked]:border-ink has-[:checked]:bg-white"
+			>
 				<input
 					type="radio"
 					class="mt-1"
@@ -64,9 +66,11 @@
 	</fieldset>
 
 	<fieldset {disabled} class="space-y-2">
-		<legend class="mb-1 font-semibold">When risk is Warning</legend>
+		<legend class="mb-2 font-semibold">When risk is Warning</legend>
 		{#each WARNING_OPTIONS as opt (opt.value)}
-			<label class="flex items-center gap-3 py-1">
+			<label
+				class="flex items-center gap-3 rounded-xl border border-line bg-well px-4 py-3 has-[:checked]:border-ink has-[:checked]:bg-white"
+			>
 				<input type="radio" name="{uid}-warning" value={opt.value} bind:group={policy.onWarning} />
 				<span>{opt.label}</span>
 			</label>
@@ -90,9 +94,9 @@
 				aria-checked={policy.priorityExit}
 				aria-labelledby="{uid}-priority"
 				{disabled}
-				class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-granite transition-colors disabled:opacity-60 {policy.priorityExit
-					? 'bg-fjord'
-					: 'bg-white'}"
+				class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors disabled:opacity-60 {policy.priorityExit
+					? 'border-ink bg-ink'
+					: 'border-granite bg-white'}"
 				onclick={() => (policy.priorityExit = !policy.priorityExit)}
 			>
 				<span
@@ -116,9 +120,9 @@
 					type="text"
 					inputmode="decimal"
 					autocomplete="off"
-					class="w-full rounded-md py-2 pr-3 pl-7 tabular disabled:bg-frost disabled:text-granite-dark {showError
+					class="w-full rounded-[10px] py-2.5 pr-3 pl-7 tabular disabled:bg-frost disabled:text-granite-dark {showError
 						? 'border-2 border-ink'
-						: 'border-granite'}"
+						: 'border-[#c5ced4]'}"
 					value={tipText}
 					disabled={disabled || !policy.priorityExit}
 					aria-invalid={showError}

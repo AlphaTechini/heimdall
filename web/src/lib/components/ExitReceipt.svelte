@@ -36,7 +36,7 @@
 		`${formatAmount(units, target.assetDecimals)} ${target.assetSymbol}`;
 </script>
 
-<article class="border-t border-line py-5 first:border-t-0">
+<article class="border-t border-line py-5 first:border-t-0 first:pt-0 last:pb-0">
 	<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
 		<h3 class="text-lg font-semibold">Exit {exit.id}: {STATUS[exit.status]}</h3>
 		<time class="text-sm text-granite-dark tabular" datetime={exit.decidedAt}

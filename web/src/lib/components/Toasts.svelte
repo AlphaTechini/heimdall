@@ -10,7 +10,7 @@
 >
 	{#each toasts.items as toast (toast.id)}
 		<div
-			class="pointer-events-auto flex max-w-sm items-start gap-3 rounded-md bg-ink px-4 py-3 text-white"
+			class="pointer-events-auto flex max-w-sm items-start gap-3 rounded-xl bg-ink px-4 py-3 text-white"
 		>
 			<span class="mt-0.5"><Icon name="check" /></span>
 			<p class="min-w-0 flex-1">{toast.message}</p>

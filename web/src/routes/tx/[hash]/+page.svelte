@@ -43,8 +43,8 @@
 
 <svelte:head><title>Transaction - Heimdall</title></svelte:head>
 
-<h1 class="text-3xl display sm:text-4xl">Transaction</h1>
-<p class="mt-2 max-w-full text-sm break-all text-granite-dark tabular">{hash}</p>
+<h1 class="title">Transaction</h1>
+<p class="mt-3 max-w-full text-sm break-all text-granite-dark tabular">{hash}</p>
 
 <div class="mt-6">
 	{#if status === 'loading'}
@@ -57,7 +57,9 @@
 	{:else if status === 'error'}
 		<ErrorState title="This transaction did not load" message={error} onretry={() => load(hash)} />
 	{:else if tx}
-		<dl class="grid max-w-3xl gap-x-8 gap-y-3 tabular sm:grid-cols-[12rem_minmax(0,1fr)]">
+		<dl
+			class="grid max-w-3xl gap-x-8 gap-y-3 panel px-6 py-6 tabular sm:grid-cols-[12rem_minmax(0,1fr)] sm:px-7"
+		>
 			<dt class="text-granite-dark">Status</dt>
 			<dd class="font-semibold">{tx.status === 'success' ? 'Succeeded' : 'Reverted'}</dd>
 			<dt class="text-granite-dark">Block</dt>
@@ -74,11 +76,11 @@
 			<dd>{formatUnits(BigInt(tx.gasUsed), 0)}</dd>
 		</dl>
 
-		<h2 class="mt-10 text-xl display">Heimdall events</h2>
+		<h2 class="mt-10 text-xl font-semibold">Heimdall events</h2>
 		{#if tx.logs.filter((l) => l.name).length === 0}
 			<p class="mt-2 text-granite-dark">This transaction did not emit any Heimdall events.</p>
 		{:else}
-			<ul class="mt-3 max-w-3xl divide-y divide-line border-y border-line">
+			<ul class="mt-3 max-w-3xl divide-y divide-line panel px-6 sm:px-7">
 				{#each tx.logs.filter((l) => l.name) as log, i (i)}
 					<li class="py-3">
 						<p class="font-semibold">{log.name}</p>

@@ -188,7 +188,7 @@
 			{target.assetSymbol} in your wallet
 		</p>
 	{/if}
-	<p class="mt-3 flex items-start gap-2 rounded-md bg-frost px-3 py-2 text-sm">
+	<p class="mt-3 flex items-start gap-2 rounded-xl border border-line bg-well px-4 py-3 text-sm">
 		<span class="mt-0.5 text-fjord"><Icon name="shield" /></span>
 		<span
 			>Heimdall can only send this money back to you. You can withdraw or turn this off any time.</span
@@ -201,14 +201,14 @@
 		</div>
 	</div>
 
-	<h3 class="mt-8 text-xl display">Setup steps</h3>
+	<h3 class="mt-8 text-lg font-semibold">Setup steps</h3>
 	<ol class="mt-3 space-y-3" aria-live="polite">
 		{#each steps as step, i (step.title)}
 			<li class="flex gap-3">
 				<span
 					class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border text-sm font-semibold {step.state ===
 					'success'
-						? 'border-fjord bg-fjord text-white'
+						? 'border-ink bg-ink text-white'
 						: 'border-granite text-granite-dark'}"
 					aria-hidden="true"
 				>
@@ -244,7 +244,7 @@
 							{#if step.error.kind === 'wrong_network'}
 								<button
 									type="button"
-									class="rounded-md border border-fjord px-3 py-1.5 text-sm font-medium text-fjord hover:bg-frost"
+									class="btn btn-sm btn-secondary"
 									onclick={() => wallet.switchNetwork()}
 								>
 									Switch network
@@ -252,7 +252,7 @@
 							{/if}
 							<button
 								type="button"
-								class="rounded-md border border-fjord px-3 py-1.5 text-sm font-medium text-fjord hover:bg-frost disabled:opacity-60"
+								class="btn btn-sm btn-secondary"
 								disabled={running}
 								onclick={activate}
 							>
@@ -279,18 +279,13 @@
 		<div class="flex flex-wrap gap-3">
 			<button
 				type="button"
-				class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
+				class="btn btn-primary"
 				disabled={running || finished || !!wallet.issue || !valid}
 				onclick={activate}
 			>
 				Activate protection
 			</button>
-			<button
-				type="button"
-				class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
-				disabled={running}
-				onclick={onclose}
-			>
+			<button type="button" class="btn btn-secondary" disabled={running} onclick={onclose}>
 				Cancel
 			</button>
 		</div>

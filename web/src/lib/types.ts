@@ -265,6 +265,8 @@ export interface Backtest {
 	chainId: number;
 	mode: 'erc4626' | 'balance';
 	tokens: string[];
+	/** Optional: each token's on-chain symbol(), shown instead of its address. */
+	tokenSymbols?: Record<string, string>;
 	tokenDecimals: Record<string, number>;
 	target: string;
 	asset: string;

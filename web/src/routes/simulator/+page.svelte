@@ -135,11 +135,11 @@
 
 <svelte:head><title>Simulator - Heimdall</title></svelte:head>
 
-<h1 class="text-3xl display sm:text-4xl">Incident simulator</h1>
-<p class="mt-2 font-medium">{LABEL}</p>
+<h1 class="title">Incident simulator</h1>
+<p class="mt-3 font-medium">{LABEL}</p>
 
 {#if !app.config?.demoMode}
-	<p class="mt-4 max-w-prose">
+	<p class="mt-4 max-w-[58ch] text-[1.0625rem] text-granite-dark">
 		The simulator only runs on a local Arbitrum One fork with demo mode on. This server is not in
 		demo mode, so there is nothing to run here.
 	</p>
@@ -161,17 +161,17 @@
 		/>
 	</div>
 {:else if scenarios}
-	<p class="mt-2 max-w-prose text-granite-dark">
+	<p class="mt-1 max-w-[58ch] text-[1.0625rem] text-granite-dark">
 		Replay an attack against a vault on the fork and watch Heimdall react. Nothing here touches a
 		real network.
 	</p>
 
-	<section class="mt-8 max-w-2xl" aria-labelledby="{uid}-run">
-		<h2 id="{uid}-run" class="text-2xl display">Run a scenario</h2>
+	<section class="mt-8 max-w-3xl panel px-6 py-6 sm:px-7" aria-labelledby="{uid}-run">
+		<h2 id="{uid}-run" class="text-xl font-semibold">Run a scenario</h2>
 		<label for="{uid}-scenario" class="mt-3 block text-sm font-medium">Scenario</label>
 		<select
 			id="{uid}-scenario"
-			class="mt-1 w-full rounded-md border-granite bg-white py-2"
+			class="mt-1.5 w-full rounded-[10px] border-[#c5ced4] bg-white py-2.5"
 			bind:value={selected}
 			disabled={!!running}
 		>
@@ -195,7 +195,7 @@
 		<div class="mt-4 flex flex-wrap gap-3 max-sm:[&>*]:w-full max-sm:[&>a]:text-center">
 			<button
 				type="button"
-				class="rounded-md bg-fjord px-5 py-2.5 font-medium text-white hover:bg-fjord-dark disabled:opacity-60"
+				class="btn btn-primary"
 				disabled={run.busy || reset.busy || runDisabledReason !== ''}
 				onclick={() => run.run()}
 			>
@@ -203,7 +203,7 @@
 			</button>
 			<button
 				type="button"
-				class="rounded-md border border-granite px-5 py-2.5 font-medium hover:bg-frost disabled:opacity-60"
+				class="btn btn-secondary"
 				disabled={run.busy || reset.busy}
 				onclick={() => reset.run()}
 			>
@@ -221,10 +221,10 @@
 		<ActionStatus action={reset} class="mt-2" />
 	</section>
 
-	<section class="mt-10 max-w-3xl" aria-labelledby="{uid}-log">
-		<h2 id="{uid}-log" class="text-2xl display">Live log</h2>
+	<section class="mt-6 max-w-3xl panel px-6 py-6 sm:px-7" aria-labelledby="{uid}-log">
+		<h2 id="{uid}-log" class="text-xl font-semibold">Live log</h2>
 		<div
-			class="mt-3 max-h-80 overflow-y-auto border-y border-line py-2"
+			class="mt-3 max-h-80 overflow-y-auto rounded-xl border border-line bg-well px-4 py-3"
 			role="log"
 			aria-live="polite"
 			aria-label="Scenario progress"
@@ -247,9 +247,9 @@
 		</div>
 	</section>
 
-	<section class="mt-10 max-w-3xl" aria-labelledby="{uid}-compare">
-		<h2 id="{uid}-compare" class="text-2xl display">Ada and Ben</h2>
-		<p class="mt-1 text-sm font-medium">{compare?.label ?? LABEL}</p>
+	<section class="mt-6 max-w-3xl panel px-6 py-6 sm:px-7" aria-labelledby="{uid}-compare">
+		<h2 id="{uid}-compare" class="text-xl font-semibold">Ada and Ben</h2>
+		<p class="mt-1 text-sm text-granite-dark">{compare?.label ?? LABEL}</p>
 		<div class="mt-3">
 			{#if compareStatus === 'loading'}
 				<div class="h-40 w-full skeleton" aria-hidden="true"></div>
@@ -261,13 +261,13 @@
 					onretry={loadCompare}
 				/>
 			{:else if compare}
-				<p class="mb-4 max-w-prose text-granite-dark">
+				<p class="mb-4 max-w-[60ch] text-granite-dark">
 					Both hold the same position in {target?.label ?? compare.targetId}. Ada has Heimdall
 					protection. Ben does not.
 				</p>
 				<div class="grid gap-6 sm:grid-cols-2">
 					{#each [{ name: 'Ada, protected', party: compare.ada }, { name: 'Ben, unprotected', party: compare.ben }] as { name, party } (name)}
-						<div>
+						<div class="rounded-xl border border-line bg-well px-4 py-4">
 							<h3 class="font-semibold">{name}</h3>
 							<dl class="mt-2 space-y-1 text-sm tabular">
 								<div class="flex justify-between gap-4">
@@ -287,7 +287,7 @@
 					{/each}
 				</div>
 
-				<h3 class="mt-8 font-semibold">Timeline</h3>
+				<h3 class="mt-8 text-lg font-semibold">Timeline</h3>
 				<ol class="mt-2 space-y-3 text-sm tabular">
 					{#each timeline as row (row.label)}
 						<li>

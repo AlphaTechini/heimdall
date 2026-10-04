@@ -72,22 +72,22 @@
 
 <svelte:head><title>Backtest - Heimdall</title></svelte:head>
 
-<h1 class="text-3xl display sm:text-4xl">Replay a real hack</h1>
+<h1 class="title">Replay a real hack</h1>
 
 {#if !app.backtestsLoaded}
 	<div class="mt-6 h-10 w-72 skeleton" aria-hidden="true"></div>
 	<p class="sr-only" role="status">Loading incidents</p>
 {:else if app.backtests.length === 0}
-	<p class="mt-3 max-w-prose">
+	<p class="mt-3 max-w-[58ch] text-[1.0625rem] text-granite-dark">
 		No incidents with real on-chain data are loaded on this server, so there is nothing to replay.
 		Go back to the <a href={resolve('/')}>dashboard</a>.
 	</p>
 {:else}
-	<div class="mt-6 max-w-md">
+	<div class="mt-8 max-w-md">
 		<label for="{uid}-incident" class="block text-sm font-medium">Incident</label>
 		<select
 			id="{uid}-incident"
-			class="mt-1 w-full rounded-md border-granite bg-white py-2"
+			class="mt-1.5 w-full rounded-[10px] border-[#c5ced4] bg-white py-2.5"
 			bind:value={selected}
 		>
 			{#each app.backtests as b (b.id)}
@@ -113,16 +113,16 @@
 			{#if data.points.length === 0}
 				<p class="max-w-prose text-granite-dark">This incident has no recorded points.</p>
 			{:else}
-				<div class="max-w-4xl">
+				<div class="max-w-4xl panel px-5 py-5">
 					<BacktestChart {data} />
 				</div>
-				<p class="mt-4 max-w-prose text-lg">{summary}</p>
+				<p class="mt-5 max-w-[60ch] text-lg font-medium">{summary}</p>
 				<p class="mt-1 max-w-prose text-granite-dark">
 					Heimdall's rules, run over the real on-chain history of this incident.
 				</p>
 			{/if}
 
-			<h2 class="mt-10 text-xl display">Data source</h2>
+			<h2 class="mt-10 text-xl font-semibold">Data source</h2>
 			<dl class="mt-3 grid max-w-3xl gap-x-8 gap-y-2 tabular sm:grid-cols-[12rem_minmax(0,1fr)]">
 				<dt class="text-granite-dark">Blocks</dt>
 				<dd>
