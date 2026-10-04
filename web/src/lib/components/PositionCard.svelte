@@ -27,7 +27,8 @@
 	const shown = $derived.by(() => {
 		switch (position.status) {
 			case 'unprotected':
-				return { units: position.walletAmount, note: 'in your wallet' };
+				// The wallet holds vault shares or aTokens: the money itself sits in the protocol.
+				return { units: position.walletAmount, note: `in ${target.label}, not protected` };
 			case 'exited':
 				return { units: position.returnedAmount, note: 'returned to your wallet' };
 			default:
