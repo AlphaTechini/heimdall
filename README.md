@@ -85,7 +85,7 @@ python3 e2e/clickthrough.py            # optional: full click-through with a stu
 | Arbitrum Sepolia | [`0x3346D96f88122eC3c7B50E50120789ECA21bdcf6`](https://sepolia.arbiscan.io/address/0x3346D96f88122eC3c7B50E50120789ECA21bdcf6#code) | [`0xA0A7F454142905f992c58CC31d0a65cdc29B2633`](https://sepolia.arbiscan.io/address/0xA0A7F454142905f992c58CC31d0a65cdc29B2633#code) |
 | Arbitrum One (experimental, unaudited) | not deployed yet | not deployed yet |
 
-Demo video: not recorded yet.
+Demo video: https://youtu.be/G-GhclUmfXA (2:05, recorded on an Arbitrum One fork against the real Morpho vault, with real Telegram alerts).
 
 ## Status
 
