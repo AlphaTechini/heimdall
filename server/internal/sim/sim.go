@@ -557,14 +557,20 @@ func (s *Sim) fastDrain(ctx context.Context, r *run) error {
 		}
 	}
 	// The drain finishes: whatever cash is left is taken, so unprotected holders are stuck.
+	// Each round takes 99.9% of what a drainer can withdraw: asking for the exact maximum can revert
+	// because interest accrues between the read and the block that mines the redeem.
 	for _, d := range drainers {
-		for k := 0; k < 3; k++ {
+		for k := 0; k < 6; k++ {
 			maxA, err := s.ch.Uint(ctx, &chain.ERC4626ABI, vault, nil, "maxWithdraw", d)
 			if err != nil || maxA.Sign() == 0 {
 				break
 			}
-			out, err := redeem(d, maxA)
-			if err != nil || out.Sign() == 0 {
+			take := new(big.Int).Div(new(big.Int).Mul(maxA, big.NewInt(999)), big.NewInt(1000))
+			if take.Sign() == 0 {
+				break
+			}
+			if _, err := redeem(d, take); err != nil {
+				slog.Warn("simulator: final drain redeem failed", "drainer", d.Hex(), "err", err)
 				break
 			}
 		}
